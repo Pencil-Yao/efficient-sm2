@@ -1,0 +1,17 @@
+[package]
+name = "efficient-sm2"
+version = "0.0.1"
+authors = ["yieazy <yuitta@163.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.7.3"
+libsm = { git = "https://github.com/citahub/libsm", branch = "smx" }
+
+[dev-dependencies]
+hex = "0.3"
+
+[features]
+internal_benches = []
