@@ -14,8 +14,6 @@
 
 //! Error reporting.
 
-#![allow(dead_code)]
-
 /// An error parsing or validating a key.
 ///
 /// The `Display` implementation and `<KeyRejected as Error>::description()`
@@ -56,28 +54,6 @@ impl KeyRejected {
         self.0
     }
 
-    pub(crate) fn inconsistent_components() -> Self {
-        KeyRejected("InconsistentComponents")
-    }
-
-    pub(crate) fn invalid_component() -> Self {
-        KeyRejected("InvalidComponent")
-    }
-
-    #[inline]
-    pub(crate) fn invalid_encoding() -> Self {
-        KeyRejected("InvalidEncoding")
-    }
-
-    // XXX: See the comment at the call site.
-    pub(crate) fn rng_failed() -> Self {
-        KeyRejected("RNG failed")
-    }
-
-    pub(crate) fn public_key_is_missing() -> Self {
-        KeyRejected("PublicKeyIsMissing")
-    }
-
     #[cfg(feature = "alloc")]
     pub(crate) fn too_small() -> Self {
         KeyRejected("TooSmall")
@@ -86,14 +62,6 @@ impl KeyRejected {
     #[cfg(feature = "alloc")]
     pub(crate) fn too_large() -> Self {
         KeyRejected("TooLarge")
-    }
-
-    pub(crate) fn version_not_supported() -> Self {
-        KeyRejected("VersionNotSupported")
-    }
-
-    pub(crate) fn wrong_algorithm() -> Self {
-        KeyRejected("WrongAlgorithm")
     }
 
     #[cfg(feature = "alloc")]
@@ -107,10 +75,6 @@ impl KeyRejected {
 
     pub(crate) fn seed_error() -> Self {
         KeyRejected("SeedOperationFailed")
-    }
-
-    pub(crate) fn keypair_error() -> Self {
-        KeyRejected("KeyPairOperationFailed")
     }
 
     pub(crate) fn sign_digest_error() -> Self {

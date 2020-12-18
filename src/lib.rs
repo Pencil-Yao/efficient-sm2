@@ -13,7 +13,6 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #![deny(
-missing_docs,
 unstable_features, // Used by `internal_benches`
 unused_qualifications,
 variant_size_differences,
@@ -40,3 +39,6 @@ mod norop;
 mod rand;
 mod sm2p256;
 mod sm2p256_table;
+
+pub use ec::KeyPair;
+pub use ec::Signature;

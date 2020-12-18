@@ -112,7 +112,7 @@ pub(crate) fn mont_pro(a: &[Limb; LIMB_LENGTH], b: &[Limb; LIMB_LENGTH]) -> [Lim
         return r;
     }
 
-    r.copy_from_slice(&mut lam3[LIMB_LENGTH..]);
+    r.copy_from_slice(&lam3[LIMB_LENGTH..]);
     r
 }
 
@@ -121,7 +121,7 @@ pub(crate) fn add_mod(a: &[Limb; LIMB_LENGTH], b: &[Limb; LIMB_LENGTH]) -> [Limb
     let carry = norop_add_pure(&mut r, a, b);
 
     if carry || norop_limbs_less_than(&r, &CURVE_PARAMS.p) == LIMB_FALSE {
-        let lam1 = r.clone();
+        let lam1 = r;
         let _ = norop_sub_pure(&mut r, &lam1, &CURVE_PARAMS.p);
         return r;
     }
@@ -133,7 +133,7 @@ pub(crate) fn sub_mod(a: &[Limb; LIMB_LENGTH], b: &[Limb; LIMB_LENGTH]) -> [Limb
     let borrow = norop_sub_pure(&mut r, a, b);
 
     if borrow {
-        let lam1 = r.clone();
+        let lam1 = r;
         let _ = norop_add_pure(&mut r, &lam1, &CURVE_PARAMS.p);
         return r;
     }
@@ -208,9 +208,9 @@ pub(crate) fn point_add(
     b_z.copy_from_slice(&b[2 * LIMB_LENGTH..]);
 
     if norop_limbs_equal_with(&a_z, &[0]) == LIMB_FULL {
-        return b.clone();
+        return *b;
     } else if norop_limbs_equal_with(&b_z, &[0]) == LIMB_FULL {
-        return a.clone();
+        return *a;
     } else if norop_limbs_equal_with(&a_x, &b_x) == LIMB_FULL
         && norop_limbs_equal_with(&a_y, &b_y) == LIMB_FULL
         && norop_limbs_equal_with(&a_z, &b_z) == LIMB_FULL
@@ -232,12 +232,12 @@ pub(crate) fn point_add(
     let h_sqr = mont_pro(&h, &h);
     let h_cub = mont_pro(&h_sqr, &h);
 
-    let v = mont_pro(&u1, &h_sqr); // u1*hh
+    let vu = mont_pro(&u1, &h_sqr); // u1*hh
     let lam1 = sub_mod(&r2_sqr, &h_cub); // rr-hhh
-    let lam2 = shl(&v, 1); // 2*v
+    let lam2 = shl(&vu, 1); // 2*v
     let r_x = sub_mod(&lam1, &lam2); // x3=rr-hhh-2*v
 
-    let lam3 = sub_mod(&v, &r_x); // v-x3
+    let lam3 = sub_mod(&vu, &r_x); // v-x3
     let lam4 = mont_pro(&r2, &lam3); // r*(v-x3)
     let lam5 = mont_pro(&s1, &h_cub); // s1*hhh
     let r_y = sub_mod(&lam4, &lam5); // y3=r*(v-x3)-s1*hhh
@@ -296,7 +296,7 @@ pub(crate) fn point_mul(
     scalar: &[Limb; LIMB_LENGTH],
 ) -> [Limb; LIMB_LENGTH * 3] {
     let mut r = [0; LIMB_LENGTH * 3];
-    let mut a = a.clone();
+    let mut a = *a;
 
     for scalar_word in scalar {
         let mut bit: usize = 0;
@@ -320,7 +320,7 @@ pub(crate) fn base_point_mul(scalar: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH
 
     for (index, scalar_word) in scalar.iter().enumerate() {
         for m in 0..num {
-            let raw_index = ((scalar_word >> 8 * m) & 0x7f) as usize;
+            let raw_index = ((scalar_word >> (8 * m)) & 0x7f) as usize;
             if raw_index != 0 {
                 let a = to_jacobi(
                     &SM2P256_PRECOMPUTED[num * index + m][raw_index * 2 - 2],
@@ -329,7 +329,7 @@ pub(crate) fn base_point_mul(scalar: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH
                 let tmp = point_add(&r, &a);
                 r = tmp;
             }
-            if (scalar_word >> 8 * m) & 0x80 != 0 {
+            if (scalar_word >> (8 * m)) & 0x80 != 0 {
                 let a = to_jacobi(
                     &SM2P256_PRECOMPUTED[num * index + m][254],
                     &SM2P256_PRECOMPUTED[num * index + m][255],
@@ -426,7 +426,7 @@ pub(crate) fn scalar_mont_pro(
         return r;
     }
 
-    r.copy_from_slice(&mut lam3[LIMB_LENGTH..]);
+    r.copy_from_slice(&lam3[LIMB_LENGTH..]);
     r
 }
 
@@ -438,7 +438,7 @@ pub(crate) fn scalar_add_mod(
     let carry = norop_add_pure(&mut r, a, b);
 
     if carry || norop_limbs_less_than(&r, &CURVE_PARAMS.n) == LIMB_FALSE {
-        let lam1 = r.clone();
+        let lam1 = r;
         let _ = norop_sub_pure(&mut r, &lam1, &CURVE_PARAMS.n);
         return r;
     }
@@ -453,13 +453,14 @@ pub(crate) fn scalar_sub_mod(
     let borrow = norop_sub_pure(&mut r, a, b);
 
     if borrow {
-        let lam1 = r.clone();
+        let lam1 = r;
         let _ = norop_add_pure(&mut r, &lam1, &CURVE_PARAMS.n);
         return r;
     }
     r
 }
 
+#[allow(clippy::identity_op)]
 pub(crate) fn scalar_inv(a: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
     // Calculate the modular inverse of scalar |a| using Fermat's Little
     // Theorem:
@@ -566,9 +567,9 @@ pub(crate) fn scalar_inv(a: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::jacobian::exchange::affine_from_jacobian;
-    use crate::sm2p256::*;
+    use super::*;
 
     #[test]
     fn sqr_mul_test() {

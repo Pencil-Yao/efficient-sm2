@@ -15,6 +15,7 @@
 use crate::err::KeyRejected;
 use crate::limb::{DoubleLimb, Limb, LIMB_BITS, LIMB_BYTES, LIMB_FULL};
 use std::num::Wrapping;
+use std::cmp::Ordering;
 
 struct DoubleLimbPair(DoubleLimb, DoubleLimb);
 
@@ -158,18 +159,19 @@ pub(crate) fn norop_limbs_less_than(a: &[Limb], b: &[Limb]) -> Limb {
         if la - i > lb && a[la - i - 1] != 0 {
             return constant_time_is_nonzero_w(0);
         } else if lb >= la - i {
-            if b[la - i - 1] > a[la - i - 1] {
-                return constant_time_is_zero_w(0);
-            } else if a[la - i - 1] > b[la - i - 1] {
-                return constant_time_is_nonzero_w(0);
+            match a[la - i - 1].cmp(&b[la - i - 1]) {
+                Ordering::Greater => return constant_time_is_nonzero_w(0),
+                Ordering::Less => return constant_time_is_zero_w(0),
+                Ordering::Equal => {},
             }
         }
     }
 
-    return constant_time_is_nonzero_w(0);
+    constant_time_is_nonzero_w(0)
 }
 
 #[inline]
+#[cfg(test)]
 pub(crate) fn norop_limbs_more_than(a: &[Limb], b: &[Limb]) -> Limb {
     let la = a.len();
     let lb = b.len();
@@ -186,15 +188,15 @@ pub(crate) fn norop_limbs_more_than(a: &[Limb], b: &[Limb]) -> Limb {
         if lb - i > la && b[lb - i - 1] != 0 {
             return constant_time_is_nonzero_w(0);
         } else if la >= lb - i {
-            if a[lb - i - 1] > b[lb - i - 1] {
-                return constant_time_is_zero_w(0);
-            } else if b[lb - i - 1] > a[lb - i - 1] {
-                return constant_time_is_nonzero_w(0);
+            match a[lb - i - 1].cmp(&b[lb - i - 1]) {
+                Ordering::Greater => return constant_time_is_zero_w(0),
+                Ordering::Less => return constant_time_is_nonzero_w(0),
+                Ordering::Equal => {},
             }
         }
     }
 
-    return constant_time_is_nonzero_w(0);
+    constant_time_is_nonzero_w(0)
 }
 
 #[inline]
@@ -211,14 +213,12 @@ pub(crate) fn norop_limbs_equal_with(a: &[Limb], b: &[Limb]) -> Limb {
     }
 
     for i in 0..lb {
-        if lb - i > la && b[lb - i - 1] != 0 {
-            return constant_time_is_nonzero_w(0);
-        } else if la >= lb - i && a[lb - i - 1] != b[lb - i - 1] {
+        if (lb - i > la && b[lb - i - 1] != 0) || (la >= lb - i && a[lb - i - 1] != b[lb - i - 1]) {
             return constant_time_is_nonzero_w(0);
         }
     }
 
-    return constant_time_is_zero_w(0);
+    constant_time_is_zero_w(0)
 }
 
 #[inline]

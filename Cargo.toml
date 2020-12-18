@@ -2,13 +2,18 @@
 name = "efficient-sm2"
 version = "0.0.1"
 authors = ["yieazy <yuitta@163.com>"]
+description = "A Rust Library of China's Standards of Signature Algorithms (SM2)"
+documentation = "https://mock.icu/efficient-sm2"
 edition = "2018"
+keywords = ["sm2", "cryptography", "performance"]
+license = "Apache-2.0"
+repository = "https://github.com/Pencil-Yao/efficient-sm2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 rand = "0.7.3"
-libsm = { git = "https://github.com/citahub/libsm", branch = "smx" }
+libsm = "0.3.0"
 
 [dev-dependencies]
 hex = "0.3"

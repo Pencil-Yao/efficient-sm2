@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![allow(dead_code)]
-
 use crate::elem::{
     elem_mul, elem_reduced_to_scalar, elem_to_unencoded, point_x, point_z, scalar_add, scalar_sub,
     scalar_to_elem, twin_mul, Elem, Scalar, Unencoded,

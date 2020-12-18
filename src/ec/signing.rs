@@ -73,12 +73,12 @@ impl KeyPair {
         digest: &[u8],
     ) -> Result<Signature, KeyRejected> {
         for _ in 0..100 {
-            let k = create_private_key(rng)?;
+            let rk = create_private_key(rng)?;
 
-            let q = base_point_mul(&k.limbs);
+            let rq = base_point_mul(&rk.limbs);
 
             let r = {
-                let (x, _) = affine_from_jacobian(&q)?;
+                let (x, _) = affine_from_jacobian(&rq)?;
                 let x = elem_to_unencoded(&x);
                 elem_reduced_to_scalar(&x)
             };
@@ -104,7 +104,7 @@ impl KeyPair {
             let da_ue = scalar_to_unencoded(&self.d);
             let left = scalar_inv_to_mont(&scalar_add(&da_ue, &SCALAR_ONE));
             let dr = scalar_mul(&self.d, &r);
-            let right = scalar_sub(&k, &dr);
+            let right = scalar_sub(&rk, &dr);
             let s = scalar_mul(&left, &right);
 
             return Ok(Signature::from_scalars(r, s));
@@ -115,9 +115,9 @@ impl KeyPair {
 
 #[cfg(test)]
 mod tests {
-    use crate::ec::signing::*;
     use rand::prelude::ThreadRng;
     use rand::Rng;
+    use super::*;
 
     #[test]
     fn sign_verify_test() {
@@ -139,7 +139,11 @@ mod tests {
 
         let sig = key_pair.sign(&mut rng, test_word).unwrap();
 
-        sig.verify(&key_pair.public_from_private().unwrap(), test_word)
+        let r = sig.r();
+        let s = sig.s();
+        let sig2 = Signature::new(&r, &s).unwrap();
+
+        sig2.verify(&key_pair.public_from_private().unwrap(), test_word)
             .unwrap()
     }
 }
