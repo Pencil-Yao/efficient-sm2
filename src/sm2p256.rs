@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::elem::{Elem, R};
-use crate::limb::{Limb, LIMB_BITS, LIMB_FALSE, LIMB_FULL, LIMB_LENGTH};
+use crate::limb::{Limb, LIMB_BITS, LIMB_LENGTH};
 use crate::norop::{
     norop_add_pure, norop_limbs_equal_with, norop_limbs_less_than, norop_mul_pure,
     norop_mul_pure_upper, norop_sub_pure,
@@ -107,7 +107,7 @@ pub(crate) fn mont_pro(a: &[Limb; LIMB_LENGTH], b: &[Limb; LIMB_LENGTH]) -> [Lim
     let mut lam3 = [0; LIMB_LENGTH * 2];
     let carry = norop_add_pure(&mut lam3, &t, &lam2);
 
-    if carry || norop_limbs_less_than(&lam3[LIMB_LENGTH..], &CURVE_PARAMS.p) == LIMB_FALSE {
+    if carry || !norop_limbs_less_than(&lam3[LIMB_LENGTH..], &CURVE_PARAMS.p) {
         let _ = norop_sub_pure(&mut r, &lam3[LIMB_LENGTH..], &CURVE_PARAMS.p);
         return r;
     }
@@ -116,11 +116,12 @@ pub(crate) fn mont_pro(a: &[Limb; LIMB_LENGTH], b: &[Limb; LIMB_LENGTH]) -> [Lim
     r
 }
 
+#[inline]
 pub(crate) fn add_mod(a: &[Limb; LIMB_LENGTH], b: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
     let mut r = [0; LIMB_LENGTH];
     let carry = norop_add_pure(&mut r, a, b);
 
-    if carry || norop_limbs_less_than(&r, &CURVE_PARAMS.p) == LIMB_FALSE {
+    if carry || !norop_limbs_less_than(&r, &CURVE_PARAMS.p) {
         let lam1 = r;
         let _ = norop_sub_pure(&mut r, &lam1, &CURVE_PARAMS.p);
         return r;
@@ -128,6 +129,7 @@ pub(crate) fn add_mod(a: &[Limb; LIMB_LENGTH], b: &[Limb; LIMB_LENGTH]) -> [Limb
     r
 }
 
+#[inline]
 pub(crate) fn sub_mod(a: &[Limb; LIMB_LENGTH], b: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
     let mut r = [0; LIMB_LENGTH];
     let borrow = norop_sub_pure(&mut r, a, b);
@@ -140,7 +142,32 @@ pub(crate) fn sub_mod(a: &[Limb; LIMB_LENGTH], b: &[Limb; LIMB_LENGTH]) -> [Limb
     r
 }
 
+#[inline]
 pub(crate) fn shl(a: &[Limb; LIMB_LENGTH], shift: usize) -> [Limb; LIMB_LENGTH] {
+    assert!(shift < 64);
+    let m = [1 << shift];
+
+    let mut lam1 = [0; LIMB_LENGTH + 1];
+    norop_mul_pure(&mut lam1, a, &m);
+
+    let lam2 = lam1;
+    norop_mul_pure(&mut lam1, &lam2[LIMB_LENGTH..], &CURVE_PARAMS.p);
+
+    let lam3 = lam1;
+    let _ = norop_sub_pure(&mut lam1, &lam2, &lam3);
+
+    let mut r = [0; LIMB_LENGTH];
+    if !norop_limbs_less_than(&lam1, &CURVE_PARAMS.p) {
+        let lam4 = lam1;
+        let _ = norop_sub_pure(&mut lam1, &lam4, &CURVE_PARAMS.p);
+    }
+    r.copy_from_slice(&lam1[..LIMB_LENGTH]);
+    r
+}
+
+#[cfg(test)]
+#[inline]
+pub(crate) fn shl_bak(a: &[Limb; LIMB_LENGTH], shift: usize) -> [Limb; LIMB_LENGTH] {
     assert!(shift < 256);
     let mut mid = [0; LIMB_LENGTH];
 
@@ -150,6 +177,7 @@ pub(crate) fn shl(a: &[Limb; LIMB_LENGTH], shift: usize) -> [Limb; LIMB_LENGTH] 
     mont_pro(a, &b)
 }
 
+#[inline]
 pub(crate) fn to_jacobi(
     x: &[Limb; LIMB_LENGTH],
     y: &[Limb; LIMB_LENGTH],
@@ -169,6 +197,7 @@ pub(crate) fn to_jacobi(
     r
 }
 
+#[inline]
 pub(crate) fn to_mont(a: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
     mont_pro(a, &CURVE_PARAMS.rr_p)
 }
@@ -181,12 +210,12 @@ fn sqr_mul(
 ) -> [Limb; LIMB_LENGTH] {
     let mut r = mont_pro(a, a);
     for _ in 1..squarings {
-        let tmp = mont_pro(&r, &r);
-        r = tmp;
+        r = mont_pro(&r, &r);
     }
     mont_pro(&r, b)
 }
 
+#[inline]
 pub(crate) fn point_add(
     a: &[Limb; LIMB_LENGTH * 3],
     b: &[Limb; LIMB_LENGTH * 3],
@@ -207,13 +236,13 @@ pub(crate) fn point_add(
     let mut b_z = [0; LIMB_LENGTH];
     b_z.copy_from_slice(&b[2 * LIMB_LENGTH..]);
 
-    if norop_limbs_equal_with(&a_z, &[0]) == LIMB_FULL {
+    if norop_limbs_equal_with(&a_z, &[0]) {
         return *b;
-    } else if norop_limbs_equal_with(&b_z, &[0]) == LIMB_FULL {
+    } else if norop_limbs_equal_with(&b_z, &[0]) {
         return *a;
-    } else if norop_limbs_equal_with(&a_x, &b_x) == LIMB_FULL
-        && norop_limbs_equal_with(&a_y, &b_y) == LIMB_FULL
-        && norop_limbs_equal_with(&a_z, &b_z) == LIMB_FULL
+    } else if norop_limbs_equal_with(&a_x, &b_x)
+        && norop_limbs_equal_with(&a_y, &b_y)
+        && norop_limbs_equal_with(&a_z, &b_z)
     {
         return point_double(a);
     }
@@ -234,7 +263,7 @@ pub(crate) fn point_add(
 
     let vu = mont_pro(&u1, &h_sqr); // u1*hh
     let lam1 = sub_mod(&r2_sqr, &h_cub); // rr-hhh
-    let lam2 = shl(&vu, 1); // 2*v
+    let lam2 = add_mod(&vu, &vu); // 2*v
     let r_x = sub_mod(&lam1, &lam2); // x3=rr-hhh-2*v
 
     let lam3 = sub_mod(&vu, &r_x); // v-x3
@@ -251,6 +280,7 @@ pub(crate) fn point_add(
     r
 }
 
+#[inline]
 pub(crate) fn point_double(a: &[Limb; LIMB_LENGTH * 3]) -> [Limb; LIMB_LENGTH * 3] {
     let mut r = [0; LIMB_LENGTH * 3];
 
@@ -267,10 +297,12 @@ pub(crate) fn point_double(a: &[Limb; LIMB_LENGTH * 3]) -> [Limb; LIMB_LENGTH * 
     let lam1 = sub_mod(&a_x, &delta); // x1-delta
     let lam2 = add_mod(&a_x, &delta); // x1+delta
     let lam3 = mont_pro(&lam1, &lam2); // (x1-delta)*(x1+delta)
-    let lam4 = shl(&lam3, 1); // 2(x1-delta)*(x1+delta)
+    let lam4 = add_mod(&lam3, &lam3); // 2(x1-delta)*(x1+delta)
     let alpha = add_mod(&lam3, &lam4); // 3(x1-delta)*(x1+delta)
     let lam5 = mont_pro(&alpha, &alpha); // alpha^2
-    let lam6 = shl(&beta, 3); // 8beta
+    let lam6_m1 = add_mod(&beta, &beta); // 2beta
+    let lam6_m2 = add_mod(&lam6_m1, &lam6_m1); // 4beta
+    let lam6 = add_mod(&lam6_m2, &lam6_m2); // 8beta
     let r_x = sub_mod(&lam5, &lam6); // x3=alpha^2-8beta
 
     let lam7 = add_mod(&a_y, &a_z);
@@ -278,8 +310,7 @@ pub(crate) fn point_double(a: &[Limb; LIMB_LENGTH * 3]) -> [Limb; LIMB_LENGTH * 
     let lam9 = sub_mod(&lam8, &gamma); // (y1+z1)^2-gamma
     let r_z = sub_mod(&lam9, &delta);
 
-    let lam10 = shl(&beta, 2); // 4beta
-    let lam11 = sub_mod(&lam10, &r_x); // 4beat-x3
+    let lam11 = sub_mod(&lam6_m2, &r_x); // 4beat-x3
     let lam12 = mont_pro(&alpha, &lam11); // alpha*(4*beta-x3)
     let gamma_sqr = mont_pro(&gamma, &gamma);
     let lam13 = shl(&gamma_sqr, 3); // 8gamma^2
@@ -291,7 +322,56 @@ pub(crate) fn point_double(a: &[Limb; LIMB_LENGTH * 3]) -> [Limb; LIMB_LENGTH * 
     r
 }
 
+#[allow(clippy::eq_op)]
+#[inline]
 pub(crate) fn point_mul(
+    a: &[Limb; LIMB_LENGTH * 3],
+    scalar: &[Limb; LIMB_LENGTH],
+) -> [Limb; LIMB_LENGTH * 3] {
+    let mut r = [0; LIMB_LENGTH * 3];
+
+    let mut table = [[0; LIMB_LENGTH * 3]; 15];
+
+    table[1 - 1] = *a;
+    table[2 - 1] = point_double(&table[1 - 1]);
+    table[4 - 1] = point_double(&table[2 - 1]);
+    table[8 - 1] = point_double(&table[4 - 1]);
+    table[3 - 1] = point_add(&table[1 - 1], &table[2 - 1]);
+    table[6 - 1] = point_double(&table[3 - 1]);
+    table[7 - 1] = point_add(&table[1 - 1], &table[6 - 1]);
+    table[12 - 1] = point_double(&table[6 - 1]);
+    table[5 - 1] = point_add(&table[1 - 1], &table[4 - 1]);
+    table[10 - 1] = point_double(&table[5 - 1]);
+    table[14 - 1] = point_double(&table[7 - 1]);
+    table[9 - 1] = point_add(&table[1 - 1], &table[8 - 1]);
+    table[11 - 1] = point_add(&table[1 - 1], &table[10 - 1]);
+    table[13 - 1] = point_add(&table[1 - 1], &table[12 - 1]);
+    table[15 - 1] = point_add(&table[1 - 1], &table[14 - 1]);
+
+    for i in 0..scalar.len() {
+        for j in 0..LIMB_BITS / 4 {
+            let index = scalar[LIMB_LENGTH - 1 - i] >> ((LIMB_BITS / 4 - 1 - j) * 4);
+            if index & 0x0f != 0 {
+                r = point_add(&table[((index - 1) & 0x0f) as usize], &r)
+            }
+
+            if i + 1 == scalar.len() && j + 1 == LIMB_BITS / 4 {
+                break;
+            }
+
+            r = point_double(&r);
+            r = point_double(&r);
+            r = point_double(&r);
+            r = point_double(&r);
+        }
+    }
+
+    r
+}
+
+#[cfg(test)]
+#[inline]
+pub(crate) fn point_mul_bak(
     a: &[Limb; LIMB_LENGTH * 3],
     scalar: &[Limb; LIMB_LENGTH],
 ) -> [Limb; LIMB_LENGTH * 3] {
@@ -302,11 +382,9 @@ pub(crate) fn point_mul(
         let mut bit: usize = 0;
         while bit < LIMB_BITS {
             if (scalar_word >> bit) & 0x01 != 0 {
-                let tmp = point_add(&r, &a);
-                r = tmp;
+                r = point_add(&r, &a);
             }
-            let tmp = point_double(&a);
-            a = tmp;
+            a = point_double(&a);
             bit += 1;
         }
     }
@@ -314,28 +392,20 @@ pub(crate) fn point_mul(
     r
 }
 
+#[inline]
 pub(crate) fn base_point_mul(scalar: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH * 3] {
     let mut r = [0; LIMB_LENGTH * 3];
     let num = LIMB_BITS / 8;
 
     for (index, scalar_word) in scalar.iter().enumerate() {
         for m in 0..num {
-            let raw_index = ((scalar_word >> (8 * m)) & 0x7f) as usize;
+            let raw_index = ((scalar_word >> (8 * m)) & 0xff) as usize;
             if raw_index != 0 {
                 let a = to_jacobi(
                     &SM2P256_PRECOMPUTED[num * index + m][raw_index * 2 - 2],
                     &SM2P256_PRECOMPUTED[num * index + m][raw_index * 2 - 1],
                 );
-                let tmp = point_add(&r, &a);
-                r = tmp;
-            }
-            if (scalar_word >> (8 * m)) & 0x80 != 0 {
-                let a = to_jacobi(
-                    &SM2P256_PRECOMPUTED[num * index + m][254],
-                    &SM2P256_PRECOMPUTED[num * index + m][255],
-                );
-                let tmp = point_add(&r, &a);
-                r = tmp;
+                r = point_add(&r, &a);
             }
         }
     }
@@ -343,6 +413,7 @@ pub(crate) fn base_point_mul(scalar: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH
     r
 }
 
+#[inline]
 pub(crate) fn inv_sqr(a: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
     // Calculate a**-2 (mod q) == a**(q - 3) (mod q)
     //
@@ -363,36 +434,38 @@ pub(crate) fn inv_sqr(a: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
     let mut acc = sqr_mul(&fffffff_11, &b_1, 1);
 
     // fffffffe
-    let mut tmp = mont_pro(&acc, &acc);
+    acc = mont_pro(&acc, &acc);
 
     // fffffffeffffffff
-    acc = sqr_mul(&tmp, &ffffffff, 32);
+    acc = sqr_mul(&acc, &ffffffff, 32);
 
     // fffffffeffffffffffffffff
-    tmp = sqr_mul(&acc, &ffffffff, 32);
+    acc = sqr_mul(&acc, &ffffffff, 32);
 
     // fffffffeffffffffffffffffffffffff
-    acc = sqr_mul(&tmp, &ffffffff, 32);
+    acc = sqr_mul(&acc, &ffffffff, 32);
 
     // fffffffeffffffffffffffffffffffffffffffff
-    tmp = sqr_mul(&acc, &ffffffff, 32);
+    acc = sqr_mul(&acc, &ffffffff, 32);
 
     // fffffffeffffffffffffffffffffffffffffffff00000000ffffffff
-    acc = sqr_mul(&tmp, &ffffffff, 64);
+    acc = sqr_mul(&acc, &ffffffff, 64);
 
     // fffffffeffffffffffffffffffffffffffffffff00000000fffffffffffffff_11
-    tmp = sqr_mul(&acc, &fffffff_11, 30);
+    acc = sqr_mul(&acc, &fffffff_11, 30);
 
     // fffffffeffffffffffffffffffffffffffffffff00000000fffffffffffffffc
-    acc = mont_pro(&tmp, &tmp);
+    acc = mont_pro(&acc, &acc);
     mont_pro(&acc, &acc)
 }
 
+#[inline]
 pub(crate) fn scalar_to_mont(a: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
     scalar_mont_pro(a, &CURVE_PARAMS.rr_n)
 }
 
 // `a` squared `squarings` times
+#[inline]
 fn scalar_sqr_mul(
     a: &[Limb; LIMB_LENGTH],
     b: &[Limb; LIMB_LENGTH],
@@ -400,8 +473,7 @@ fn scalar_sqr_mul(
 ) -> [Limb; LIMB_LENGTH] {
     let mut r = scalar_mont_pro(a, a);
     for _ in 1..squarings {
-        let tmp = scalar_mont_pro(&r, &r);
-        r = tmp;
+        r = scalar_mont_pro(&r, &r);
     }
 
     scalar_mont_pro(&r, b)
@@ -421,7 +493,7 @@ pub(crate) fn scalar_mont_pro(
     let mut lam3 = [0; LIMB_LENGTH * 2];
     let carry = norop_add_pure(&mut lam3, &t, &lam2);
 
-    if carry || norop_limbs_less_than(&lam3[LIMB_LENGTH..], &CURVE_PARAMS.n) == LIMB_FALSE {
+    if carry || !norop_limbs_less_than(&lam3[LIMB_LENGTH..], &CURVE_PARAMS.n) {
         let _ = norop_sub_pure(&mut r, &lam3[LIMB_LENGTH..], &CURVE_PARAMS.n);
         return r;
     }
@@ -430,6 +502,7 @@ pub(crate) fn scalar_mont_pro(
     r
 }
 
+#[inline]
 pub(crate) fn scalar_add_mod(
     a: &[Limb; LIMB_LENGTH],
     b: &[Limb; LIMB_LENGTH],
@@ -437,7 +510,7 @@ pub(crate) fn scalar_add_mod(
     let mut r = [0; LIMB_LENGTH];
     let carry = norop_add_pure(&mut r, a, b);
 
-    if carry || norop_limbs_less_than(&r, &CURVE_PARAMS.n) == LIMB_FALSE {
+    if carry || !norop_limbs_less_than(&r, &CURVE_PARAMS.n) {
         let lam1 = r;
         let _ = norop_sub_pure(&mut r, &lam1, &CURVE_PARAMS.n);
         return r;
@@ -445,6 +518,7 @@ pub(crate) fn scalar_add_mod(
     r
 }
 
+#[inline]
 pub(crate) fn scalar_sub_mod(
     a: &[Limb; LIMB_LENGTH],
     b: &[Limb; LIMB_LENGTH],
@@ -460,6 +534,7 @@ pub(crate) fn scalar_sub_mod(
     r
 }
 
+#[inline]
 #[allow(clippy::identity_op)]
 pub(crate) fn scalar_inv(a: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
     // Calculate the modular inverse of scalar |a| using Fermat's Little
@@ -505,20 +580,19 @@ pub(crate) fn scalar_inv(a: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
     let mut acc = scalar_sqr_mul(&ffff, &ff, 0 + 8);
 
     // fffffff_111
-    let mut tmp = scalar_sqr_mul(&acc, &b_1111111, 0 + 7);
+    acc = scalar_sqr_mul(&acc, &b_1111111, 0 + 7);
 
     // fffffffe
-    acc = scalar_mont_pro(&tmp, &tmp);
+    acc = scalar_mont_pro(&acc, &acc);
 
     // fffffffeffffffff
-    tmp = scalar_sqr_mul(&acc, &ffffffff, 0 + 32);
+    acc = scalar_sqr_mul(&acc, &ffffffff, 0 + 32);
 
     // fffffffeffffffffffffffff
-    acc = scalar_sqr_mul(&tmp, &ffffffff, 0 + 32);
+    acc = scalar_sqr_mul(&acc, &ffffffff, 0 + 32);
 
     // fffffffeffffffffffffffffffffffff
-    tmp = scalar_sqr_mul(&acc, &ffffffff, 0 + 32);
-    acc = tmp;
+    acc = scalar_sqr_mul(&acc, &ffffffff, 0 + 32);
 
     // The rest of the exponent, in binary, is:
     //
@@ -559,8 +633,7 @@ pub(crate) fn scalar_inv(a: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
     ];
 
     for &(squarings, digit) in &REMAINING_WINDOWS {
-        tmp = scalar_sqr_mul(&acc, &d[digit], squarings);
-        acc = tmp;
+        acc = scalar_sqr_mul(&acc, &d[digit], squarings);
     }
 
     acc
@@ -568,8 +641,8 @@ pub(crate) fn scalar_inv(a: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
 
 #[cfg(test)]
 mod tests {
-    use crate::jacobian::exchange::affine_from_jacobian;
     use super::*;
+    use crate::jacobian::exchange::affine_from_jacobian;
 
     #[test]
     fn sqr_mul_test() {
@@ -746,16 +819,55 @@ mod tests {
         let mont_ori_point_g_x = to_mont(&ori_point_g_x);
         let mont_ori_point_g_y = to_mont(&ori_point_g_y);
         let projective_mont_point_g = to_jacobi(&mont_ori_point_g_x, &mont_ori_point_g_y);
-        let scalar: &[Limb; LIMB_LENGTH] = &[31 << 7, 0, 0, 0];
+        let scalar: &[Limb; LIMB_LENGTH] = &[
+            0xd89cdf6229c4bddf,
+            0xacf005cd78843090,
+            0xe5a220abf7212ed6,
+            0xdc30061d04874834,
+        ];
         let pro_point = point_mul(&projective_mont_point_g, scalar);
 
-        let r_x: &mut [Limb; LIMB_LENGTH] = &mut [0, 0, 0, 0];
-        let r_y: &mut [Limb; LIMB_LENGTH] = &mut [0, 0, 0, 0];
-        r_x.copy_from_slice(&pro_point[..LIMB_LENGTH]);
-        r_y.copy_from_slice(&pro_point[LIMB_LENGTH..LIMB_LENGTH * 2]);
-        r_x.reverse();
-        r_y.reverse();
-        println!("point_mul_test: x: {:x?}, y: {:x?}", r_x, r_y);
+        let mut aff_point = affine_from_jacobian(&pro_point).unwrap();
+        aff_point.0.limbs.reverse();
+        aff_point.1.limbs.reverse();
+        println!(
+            "point_mul_test: x: {:x?}, y: {:x?}",
+            aff_point.0.limbs, aff_point.1.limbs
+        );
+    }
+
+    #[test]
+    fn point_mul_bak_test() {
+        let ori_point_g_x: &[Limb; LIMB_LENGTH] = &[
+            0x715a4589334c74c7,
+            0x8fe30bbff2660be1,
+            0x5f9904466a39c994,
+            0x32c4ae2c1f198119,
+        ];
+        let ori_point_g_y: &[Limb; LIMB_LENGTH] = &[
+            0x02df32e52139f0a0,
+            0xd0a9877cc62a4740,
+            0x59bdcee36b692153,
+            0xbc3736a2f4f6779c,
+        ];
+        let mont_ori_point_g_x = to_mont(&ori_point_g_x);
+        let mont_ori_point_g_y = to_mont(&ori_point_g_y);
+        let projective_mont_point_g = to_jacobi(&mont_ori_point_g_x, &mont_ori_point_g_y);
+        let scalar: &[Limb; LIMB_LENGTH] = &[
+            0xd89cdf6229c4bddf,
+            0xacf005cd78843090,
+            0xe5a220abf7212ed6,
+            0xdc30061d04874834,
+        ];
+        let pro_point = point_mul_bak(&projective_mont_point_g, scalar);
+
+        let mut aff_point = affine_from_jacobian(&pro_point).unwrap();
+        aff_point.0.limbs.reverse();
+        aff_point.1.limbs.reverse();
+        println!(
+            "point_mul_test: x: {:x?}, y: {:x?}",
+            aff_point.0.limbs, aff_point.1.limbs
+        );
     }
 
     #[test]
@@ -803,30 +915,103 @@ mod tests {
         r.reverse();
         println!("shl_test: {:x?}", r);
     }
+
+    #[test]
+    fn shl_bak_test() {
+        let a: &[Limb; LIMB_LENGTH] = &[
+            0xfffff8950000053b,
+            0xfffffdc600000543,
+            0xfffffb8c00000324,
+            0xfffffc4d0000064e,
+        ];
+        let mut r = shl_bak(a, 7);
+        r.reverse();
+        println!("shl_test: {:x?}", r);
+    }
 }
 
 #[cfg(feature = "internal_benches")]
 mod sm2_bench {
-    use crate::sm2p256::*;
+    use super::*;
+    use num_bigint::BigUint;
 
     extern crate test;
 
     #[bench]
     fn mont_pro_bench(bench: &mut test::Bencher) {
-        let a = [
+        let mut a = [
             0xffffff8a00000051,
             0xffffffdc00000054,
             0xffffffba00000031,
             0xffffffc400000063,
         ];
         bench.iter(|| {
-            let _ = mont_pro(&a, &a);
+            a = mont_pro(&a, &a);
+        });
+    }
+
+    #[bench]
+    fn big_number_bench(bench: &mut test::Bencher) {
+        let mut a = BigUint::from_bytes_be(
+            &hex::decode("ffffffc400000063ffffffba00000031ffffffdc00000054ffffff8a00000051")
+                .unwrap(),
+        );
+        let p = &BigUint::from_bytes_be(
+            &hex::decode("fffffffeffffffffffffffffffffffffffffffff00000000ffffffffffffffff")
+                .unwrap(),
+        );
+        bench.iter(|| {
+            a = &a * &a % p;
+        });
+    }
+
+    #[bench]
+    fn libsm_mul_mod_bench(bench: &mut test::Bencher) {
+        let ctx = libsm::sm2::field::FieldCtx::new();
+        let mut a = libsm::sm2::field::FieldElem::new([
+            0xffff_ff8a,
+            0x0000_0051,
+            0xffff_ffdc,
+            0x0000_0054,
+            0xffff_ffba,
+            0x0000_0031,
+            0xffff_ffc4,
+            0x0000_0063,
+        ]);
+        bench.iter(|| {
+            a = ctx.mul(&a, &a);
+        });
+    }
+
+    #[bench]
+    fn shl_bench(bench: &mut test::Bencher) {
+        let mut a = [
+            0xffffff8a00000051,
+            0xffffffdc00000054,
+            0xffffffba00000031,
+            0xffffffc400000063,
+        ];
+        bench.iter(|| {
+            a = shl(&a, 3);
+        });
+    }
+
+    #[bench]
+    fn shl_bak_bench(bench: &mut test::Bencher) {
+        let mut a = [
+            0xffffff8a00000051,
+            0xffffffdc00000054,
+            0xffffffba00000031,
+            0xffffffc400000063,
+        ];
+        bench.iter(|| {
+            a = shl_bak(&a, 3);
         });
     }
 
     #[bench]
     fn add_mod_bench(bench: &mut test::Bencher) {
-        let a = [
+        let mut a = [
             0xfffff8950000053b,
             0xfffffdc600000543,
             0xfffffb8c00000324,
@@ -839,7 +1024,108 @@ mod sm2_bench {
             0x52ab139ac09ec830,
         ];
         bench.iter(|| {
-            let _ = add_mod(&a, &b);
+            a = add_mod(&a, &b);
+        });
+    }
+
+    #[bench]
+    fn sub_mod_bench(bench: &mut test::Bencher) {
+        let mut a = [
+            0xfffff8950000053b,
+            0xfffffdc600000543,
+            0xfffffb8c00000324,
+            0xfffffc4d0000064e,
+        ];
+        let b = [
+            0x16553623adc0a99a,
+            0xd3f55c3f46cdfd75,
+            0x7bdb6926ab664658,
+            0x52ab139ac09ec830,
+        ];
+        bench.iter(|| {
+            a = sub_mod(&a, &b);
+        });
+    }
+
+    #[bench]
+    fn point_add_bench(bench: &mut test::Bencher) {
+        let mut pro_g_2 = [
+            0x18a9143c79e730d4,
+            0x5fedb60175ba95fc,
+            0x7762251079fb732b,
+            0xa53755c618905f76,
+            0xce95560addf25357,
+            0xba19e45c8b4ab8e4,
+            0xdd21f325d2e88688,
+            0x25885d858571ff18,
+            0x0000000000000001,
+            0xffffffff00000000,
+            0xffffffffffffffff,
+            0xfffffffe,
+        ];
+        bench.iter(|| {
+            pro_g_2 = point_add(&pro_g_2, &pro_g_2);
+        });
+    }
+
+    #[bench]
+    fn point_double_bench(bench: &mut test::Bencher) {
+        let mut pro_g_2 = [
+            0x18a9143c79e730d4,
+            0x5fedb60175ba95fc,
+            0x7762251079fb732b,
+            0xa53755c618905f76,
+            0xce95560addf25357,
+            0xba19e45c8b4ab8e4,
+            0xdd21f325d2e88688,
+            0x25885d858571ff18,
+            0x0000000000000001,
+            0xffffffff00000000,
+            0xffffffffffffffff,
+            0xfffffffe,
+        ];
+        bench.iter(|| {
+            pro_g_2 = point_double(&pro_g_2);
+        });
+    }
+
+    #[bench]
+    fn point_mul_bench(bench: &mut test::Bencher) {
+        let scalar = [
+            0xfffff8950000053b,
+            0xfffffdc600000543,
+            0xfffffb8c00000324,
+            0xfffffc4d0000064e,
+        ];
+        let mut g_2 = [
+            0x0af037bfbc3be46a,
+            0x83bdc9ba2d8fa938,
+            0x5349d94b5788cd24,
+            0x0d7e9c18caa5736a,
+            0x6a7e1a1d69db9ac1,
+            0xccbd8d37c4a8e82b,
+            0xc7b145169b7157ac,
+            0x947e74656c21bdf5,
+            0x0000000000000001,
+            0xffffffff00000000,
+            0xffffffffffffffff,
+            0xfffffffe,
+        ];
+        bench.iter(|| {
+            g_2 = point_mul(&g_2, &scalar);
+        });
+    }
+
+    #[bench]
+    fn base_point_mul_bench(bench: &mut test::Bencher) {
+        let scalar = [
+            0xfffff8950000053b,
+            0xfffffdc600000543,
+            0xfffffb8c00000324,
+            0xfffffc4d0000064e,
+        ];
+        bench.iter(|| {
+            let _ = base_point_mul(&scalar);
         });
     }
 }

@@ -18,7 +18,7 @@ use crate::elem::{
     scalar_sub, scalar_to_unencoded, Elem, Scalar, R,
 };
 use crate::err::KeyRejected;
-use crate::jacobian::exchange::{affine_from_jacobian, big_endian_affine_from_jacobian};
+use crate::jacobian::exchange::affine_from_jacobian;
 use crate::key::private::create_private_key;
 use crate::key::public::PublicKey;
 use crate::limb::{LIMB_BYTES, LIMB_LENGTH, ONE};
@@ -29,6 +29,7 @@ use core::marker::PhantomData;
 
 pub struct KeyPair {
     d: Scalar<R>, // *R*
+    pk: PublicKey,
 }
 
 impl KeyPair {
@@ -39,18 +40,12 @@ impl KeyPair {
             limbs: scalar_to_mont(&key_limb),
             m: PhantomData,
         };
-        Ok(KeyPair { d })
+        let pk = PublicKey::public_from_private(&d)?;
+        Ok(KeyPair { d, pk })
     }
 
-    pub fn public_from_private(&self) -> Result<PublicKey, KeyRejected> {
-        let du = scalar_to_unencoded(&self.d);
-        let pk_point = base_point_mul(&du.limbs);
-        let mut x = [0; LIMB_LENGTH * LIMB_BYTES];
-        let mut y = [0; LIMB_LENGTH * LIMB_BYTES];
-
-        big_endian_affine_from_jacobian(&mut x, &mut y, &pk_point)?;
-
-        Ok(PublicKey::new(&x, &y))
+    pub fn public_key(&self) -> PublicKey {
+        self.pk
     }
 
     pub fn sign(
@@ -60,7 +55,7 @@ impl KeyPair {
     ) -> Result<Signature, KeyRejected> {
         let ctx = libsm::sm2::signature::SigCtx::new();
         let pk_point = ctx
-            .load_pubkey(self.public_from_private().unwrap().bytes_less_safe())
+            .load_pubkey(self.pk.bytes_less_safe())
             .map_err(|_| KeyRejected::sign_error())?;
         let digest = ctx.hash("1234567812345678", &pk_point, message);
 
@@ -74,6 +69,17 @@ impl KeyPair {
     ) -> Result<Signature, KeyRejected> {
         for _ in 0..100 {
             let rk = create_private_key(rng)?;
+
+            #[cfg(test)]
+            let rk = Scalar {
+                limbs: [
+                    0xd89cdf6229c4bddf,
+                    0xacf005cd78843090,
+                    0xe5a220abf7212ed6,
+                    0xdc30061d04874834,
+                ],
+                m: PhantomData,
+            };
 
             let rq = base_point_mul(&rk.limbs);
 
@@ -107,6 +113,9 @@ impl KeyPair {
             let right = scalar_sub(&rk, &dr);
             let s = scalar_mul(&left, &right);
 
+            #[cfg(test)]
+            println!("r: {:x?}, s: {:x?}", r.limbs, s.limbs);
+
             return Ok(Signature::from_scalars(r, s));
         }
         Err(KeyRejected::sign_digest_error())
@@ -115,9 +124,9 @@ impl KeyPair {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use rand::prelude::ThreadRng;
     use rand::Rng;
-    use super::*;
 
     #[test]
     fn sign_verify_test() {
@@ -132,18 +141,89 @@ mod tests {
         let test_word = b"hello world";
         let mut rng = EgRand(rand::thread_rng());
 
-        let mut private_key = [0; LIMB_LENGTH * LIMB_BYTES];
-        rng.fill(&mut private_key);
+        let private_key = b"f68de5710d66195e2bacd994b1408d4e";
 
         let key_pair = KeyPair::new(&private_key).unwrap();
 
         let sig = key_pair.sign(&mut rng, test_word).unwrap();
 
-        let r = sig.r();
-        let s = sig.s();
-        let sig2 = Signature::new(&r, &s).unwrap();
+        sig.verify(&key_pair.public_key(), test_word).unwrap()
+    }
+}
 
-        sig2.verify(&key_pair.public_from_private().unwrap(), test_word)
-            .unwrap()
+#[cfg(feature = "internal_benches")]
+mod sign_bench {
+    use super::*;
+    use rand::prelude::ThreadRng;
+    use rand::Rng;
+
+    extern crate test;
+
+    #[bench]
+    fn es_sign_bench(bench: &mut test::Bencher) {
+        pub struct EgRand(ThreadRng);
+
+        impl SecureRandom for EgRand {
+            fn fill(&mut self, dest: &mut [u8]) {
+                self.0.fill(dest)
+            }
+        }
+
+        let test_word = b"hello world";
+        let mut rng = EgRand(rand::thread_rng());
+
+        let private_key = b"f68de5710d66195e2bacd994b1408d4e";
+
+        let key_pair = KeyPair::new(private_key).unwrap();
+
+        bench.iter(|| {
+            let _ = key_pair.sign(&mut rng, test_word).unwrap();
+        });
+    }
+
+    #[bench]
+    fn libsm_sign_bench(bench: &mut test::Bencher) {
+        let test_word = b"hello world";
+        let ctx = libsm::sm2::signature::SigCtx::new();
+        let (pk, sk) = ctx.new_keypair();
+
+        bench.iter(|| {
+            let _ = ctx.sign(test_word, &sk, &pk);
+        });
+    }
+
+    #[bench]
+    fn es_verify_bench(bench: &mut test::Bencher) {
+        pub struct EgRand(ThreadRng);
+
+        impl SecureRandom for EgRand {
+            fn fill(&mut self, dest: &mut [u8]) {
+                self.0.fill(dest)
+            }
+        }
+
+        let test_word = b"hello world";
+        let mut rng = EgRand(rand::thread_rng());
+
+        let private_key = b"f68de5710d66195e2bacd994b1408d4e";
+        let key_pair = KeyPair::new(private_key).unwrap();
+        let sig = key_pair.sign(&mut rng, test_word).unwrap();
+        let pk = key_pair.public_key();
+
+        bench.iter(|| {
+            let _ = sig.verify(&pk, test_word).unwrap();
+        });
+    }
+
+    #[bench]
+    fn libsm_verify_bench(bench: &mut test::Bencher) {
+        let test_word = b"hello world";
+        let ctx = libsm::sm2::signature::SigCtx::new();
+        let (pk, sk) = ctx.new_keypair();
+        let sig = ctx.sign(test_word, &sk, &pk);
+
+        bench.iter(|| {
+            let _ = ctx.verify(test_word, &pk, &sig);
+        });
     }
 }
