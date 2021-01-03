@@ -14,7 +14,6 @@
 
 use crate::err::KeyRejected;
 use crate::limb::{DoubleLimb, Limb, LIMB_BITS, LIMB_BYTES, LIMB_FULL};
-use std::num::Wrapping;
 use std::cmp::Ordering;
 
 struct DoubleLimbPair(DoubleLimb, DoubleLimb);
@@ -130,110 +129,88 @@ fn limb_add(a: Limb, b: Limb, carry: bool) -> (Limb, bool) {
 
 #[inline]
 fn limb_sub(a: Limb, b: Limb, borrow: bool) -> (Limb, bool) {
-    if borrow {
-        if a > b {
-            return (a - b - 1, false);
-        }
-        return (LIMB_FULL - b + a, true);
-    }
-    if a < b {
-        return (LIMB_FULL - b + a + 1, true);
-    }
-    (a - b, false)
+    let (a, b1) = a.overflowing_sub(borrow as Limb);
+    let (res, b2) = a.overflowing_sub(b);
+    (res, b1 || b2)
 }
 
 #[inline]
-pub(crate) fn norop_limbs_less_than(a: &[Limb], b: &[Limb]) -> Limb {
+pub(crate) fn norop_limbs_less_than(a: &[Limb], b: &[Limb]) -> bool {
     let la = a.len();
     let lb = b.len();
 
     if lb > la {
         for i in 0..lb - la {
             if b[la + i] != 0 {
-                return constant_time_is_zero_w(0);
+                return true;
             }
         }
     }
 
     for i in 0..la {
         if la - i > lb && a[la - i - 1] != 0 {
-            return constant_time_is_nonzero_w(0);
+            return false;
         } else if lb >= la - i {
             match a[la - i - 1].cmp(&b[la - i - 1]) {
-                Ordering::Greater => return constant_time_is_nonzero_w(0),
-                Ordering::Less => return constant_time_is_zero_w(0),
-                Ordering::Equal => {},
+                Ordering::Greater => return false,
+                Ordering::Less => return true,
+                Ordering::Equal => {}
             }
         }
     }
 
-    constant_time_is_nonzero_w(0)
+    false
 }
 
 #[inline]
 #[cfg(test)]
-pub(crate) fn norop_limbs_more_than(a: &[Limb], b: &[Limb]) -> Limb {
+pub(crate) fn norop_limbs_more_than(a: &[Limb], b: &[Limb]) -> bool {
     let la = a.len();
     let lb = b.len();
 
     if la > lb {
         for i in 0..la - lb {
             if a[lb + i] != 0 {
-                return constant_time_is_zero_w(0);
+                return true;
             }
         }
     }
 
     for i in 0..lb {
         if lb - i > la && b[lb - i - 1] != 0 {
-            return constant_time_is_nonzero_w(0);
+            return false;
         } else if la >= lb - i {
             match a[lb - i - 1].cmp(&b[lb - i - 1]) {
-                Ordering::Greater => return constant_time_is_zero_w(0),
-                Ordering::Less => return constant_time_is_nonzero_w(0),
-                Ordering::Equal => {},
+                Ordering::Greater => return true,
+                Ordering::Less => return false,
+                Ordering::Equal => {}
             }
         }
     }
 
-    constant_time_is_nonzero_w(0)
+    false
 }
 
 #[inline]
-pub(crate) fn norop_limbs_equal_with(a: &[Limb], b: &[Limb]) -> Limb {
+pub(crate) fn norop_limbs_equal_with(a: &[Limb], b: &[Limb]) -> bool {
     let la = a.len();
     let lb = b.len();
 
     if la > lb {
         for i in 0..la - lb {
             if a[lb + i] != 0 {
-                return constant_time_is_nonzero_w(0);
+                return false;
             }
         }
     }
 
     for i in 0..lb {
         if (lb - i > la && b[lb - i - 1] != 0) || (la >= lb - i && a[lb - i - 1] != b[lb - i - 1]) {
-            return constant_time_is_nonzero_w(0);
+            return false;
         }
     }
 
-    constant_time_is_zero_w(0)
-}
-
-#[inline]
-fn constant_time_is_zero_w(a: Limb) -> Limb {
-    constant_time_msb_w(!a & (Wrapping(a) - Wrapping(1)).0)
-}
-
-#[inline]
-fn constant_time_is_nonzero_w(a: Limb) -> Limb {
-    !constant_time_msb_w(!a & (Wrapping(a) - Wrapping(1)).0)
-}
-
-#[inline]
-fn constant_time_msb_w(a: Limb) -> Limb {
-    (Wrapping(0) - Wrapping(a >> (std::mem::size_of::<Limb>() * 8 - 1))).0
+    true
 }
 
 pub(crate) fn parse_big_endian(output: &mut [Limb], input: &[u8]) -> Result<(), KeyRejected> {
@@ -269,8 +246,7 @@ pub(crate) fn parse_big_endian(output: &mut [Limb], input: &[u8]) -> Result<(), 
 
 pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
     let num_limbs = limbs.len();
-    let out_len = out.len();
-    assert_eq!(out_len, num_limbs * LIMB_BYTES);
+    assert_eq!(out.len(), num_limbs * LIMB_BYTES);
     for i in 0..num_limbs {
         let mut limb = limbs[i];
         for j in 0..LIMB_BYTES {
@@ -282,7 +258,6 @@ pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
 
 #[cfg(test)]
 mod test {
-    use crate::limb::{LIMB_FALSE, LIMB_TRUE};
     use crate::norop::*;
 
     #[test]
@@ -349,68 +324,68 @@ mod test {
     fn norop_limbs_less_than_test() {
         let a = [0x12345, 0x23456, 0x34567, 0x45678, 0, 0, 0];
         let b = [0x12345, 0x23456, 0x34567, 0x45678, 0x1, 0];
-        assert_eq!(norop_limbs_less_than(&a, &b), LIMB_TRUE);
+        assert!(norop_limbs_less_than(&a, &b));
 
         let a = [0x12345, 0x23456, 0x34567, 0x45678];
         let b = [0x12345, 0x23456, 0x34567, 0, 0, 0];
-        assert_eq!(norop_limbs_less_than(&a, &b), LIMB_FALSE);
+        assert!(!norop_limbs_less_than(&a, &b));
 
         let a = [0x12345, 0x23456, 0x34567, 0x45678];
         let b = [0x12344, 0x23456, 0x34567, 0x45678];
-        assert_eq!(norop_limbs_less_than(&a, &b), LIMB_FALSE);
+        assert!(!norop_limbs_less_than(&a, &b));
 
         let a = [0x12345, 0x23456, 0x34567, 0x45678];
         let b = [0x12346, 0x23456, 0x34567, 0x45678];
-        assert_eq!(norop_limbs_less_than(&a, &b), LIMB_TRUE);
+        assert!(norop_limbs_less_than(&a, &b));
 
         let a = [0x12345, 0x23456, 0x34567, 0x45678];
         let b = [0x12345, 0x23456, 0x34567, 0x45678];
-        assert_eq!(norop_limbs_less_than(&a, &b), LIMB_FALSE);
+        assert!(!norop_limbs_less_than(&a, &b));
     }
 
     #[test]
     fn norop_limbs_more_than_test() {
         let a = [0x12345, 0x23456, 0x34567, 0x45678, 0, 0, 0];
         let b = [0x12345, 0x23456, 0x34567, 0x45678, 0x1, 0];
-        assert_eq!(norop_limbs_more_than(&a, &b), LIMB_FALSE);
+        assert!(!norop_limbs_more_than(&a, &b));
 
         let a = [0x12345, 0x23456, 0x34567, 0x45678];
         let b = [0x12345, 0x23456, 0x34567, 0, 0, 0];
-        assert_eq!(norop_limbs_more_than(&a, &b), LIMB_TRUE);
+        assert!(norop_limbs_more_than(&a, &b));
 
         let a = [0x12345, 0x23456, 0x34567, 0x45678];
         let b = [0x12344, 0x23456, 0x34567, 0x45678];
-        assert_eq!(norop_limbs_more_than(&a, &b), LIMB_TRUE);
+        assert!(norop_limbs_more_than(&a, &b));
 
         let a = [0x12345, 0x23456, 0x34567, 0x45678];
         let b = [0x12346, 0x23456, 0x34567, 0x45678];
-        assert_eq!(norop_limbs_more_than(&a, &b), LIMB_FALSE);
+        assert!(!norop_limbs_more_than(&a, &b));
 
         let a = [0x12345, 0x23456, 0x34567, 0x45678];
         let b = [0x12345, 0x23456, 0x34567, 0x45678];
-        assert_eq!(norop_limbs_more_than(&a, &b), LIMB_FALSE);
+        assert!(!norop_limbs_more_than(&a, &b));
     }
 
     #[test]
     fn norop_limbs_equal_with_test() {
         let a = [0x12345, 0x23456, 0x34567, 0x45678, 0, 0, 0];
         let b = [0x12345, 0x23456, 0x34567, 0x45678, 0x1, 0];
-        assert_eq!(norop_limbs_equal_with(&a, &b), LIMB_FALSE);
+        assert!(!norop_limbs_equal_with(&a, &b));
 
         let a = [0x12345, 0x23456, 0x34567, 0x45678];
         let b = [0x12345, 0x23456, 0x34567];
-        assert_eq!(norop_limbs_equal_with(&a, &b), LIMB_FALSE);
+        assert!(!norop_limbs_equal_with(&a, &b));
 
         let a = [0x12345, 0x23456, 0x34567, 0x45678];
         let b = [0x12344, 0x23456, 0x34567, 0x45678];
-        assert_eq!(norop_limbs_equal_with(&a, &b), LIMB_FALSE);
+        assert!(!norop_limbs_equal_with(&a, &b));
 
         let a = [0x12345, 0x23456, 0x34567, 0x45678];
         let b = [0x12346, 0x23456, 0x34567, 0x45678];
-        assert_eq!(norop_limbs_equal_with(&a, &b), LIMB_FALSE);
+        assert!(!norop_limbs_equal_with(&a, &b));
 
         let a = [0x12345, 0x23456, 0x34567, 0x45678];
         let b = [0x12345, 0x23456, 0x34567, 0x45678];
-        assert_eq!(norop_limbs_equal_with(&a, &b), LIMB_TRUE);
+        assert!(norop_limbs_equal_with(&a, &b));
     }
 }

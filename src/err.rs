@@ -54,21 +54,6 @@ impl KeyRejected {
         self.0
     }
 
-    #[cfg(feature = "alloc")]
-    pub(crate) fn too_small() -> Self {
-        KeyRejected("TooSmall")
-    }
-
-    #[cfg(feature = "alloc")]
-    pub(crate) fn too_large() -> Self {
-        KeyRejected("TooLarge")
-    }
-
-    #[cfg(feature = "alloc")]
-    pub(crate) fn private_modulus_len_not_multiple_of_512_bits() -> Self {
-        KeyRejected("PrivateModulusLenNotMultipleOf512Bits")
-    }
-
     pub(crate) fn unexpected_error() -> Self {
         KeyRejected("UnexpectedError")
     }

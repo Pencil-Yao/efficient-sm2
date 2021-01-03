@@ -14,7 +14,7 @@
 
 use crate::elem::Scalar;
 use crate::err::KeyRejected;
-use crate::limb::{LIMB_BYTES, LIMB_LENGTH, LIMB_TRUE};
+use crate::limb::{LIMB_BYTES, LIMB_LENGTH};
 use crate::norop::{norop_limbs_less_than, parse_big_endian};
 use crate::rand::SecureRandom;
 use crate::sm2p256::CURVE_PARAMS;
@@ -30,7 +30,7 @@ pub(crate) fn create_private_key(rng: &mut dyn SecureRandom) -> Result<Scalar, K
         rng.fill(&mut seed);
         parse_big_endian(&mut candidate, &seed)?;
 
-        if norop_limbs_less_than(&candidate, &CURVE_PARAMS.n) == LIMB_TRUE {
+        if norop_limbs_less_than(&candidate, &CURVE_PARAMS.n) {
             return Ok(Scalar {
                 limbs: candidate,
                 m: PhantomData,

@@ -12,19 +12,22 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use crate::elem::{scalar_to_unencoded, Scalar, R};
+use crate::err::KeyRejected;
+use crate::jacobian::exchange::big_endian_affine_from_jacobian;
 use crate::limb::{Limb, LIMB_BYTES, LIMB_LENGTH};
 use crate::norop::parse_big_endian;
-use crate::sm2p256::{to_jacobi, to_mont};
+use crate::sm2p256::{base_point_mul, to_jacobi, to_mont};
 
 #[derive(Copy, Clone)]
 pub struct PublicKey {
-    bytes: [u8; PUBLIC_KE_LEN],
+    bytes: [u8; PUBLIC_KEY_LEN],
 }
 
 impl PublicKey {
     pub fn new(x: &[u8; LIMB_LENGTH * LIMB_BYTES], y: &[u8; LIMB_LENGTH * LIMB_BYTES]) -> Self {
         let mut public = PublicKey {
-            bytes: [0; PUBLIC_KE_LEN],
+            bytes: [0; PUBLIC_KEY_LEN],
         };
         public.bytes[0] = 4;
         public.bytes[1..1 + LIMB_LENGTH * LIMB_BYTES].copy_from_slice(x);
@@ -48,6 +51,17 @@ impl PublicKey {
 
         to_jacobi(&x_aff, &y_aff)
     }
+
+    pub fn public_from_private(d: &Scalar<R>) -> Result<PublicKey, KeyRejected> {
+        let du = scalar_to_unencoded(d);
+        let pk_point = base_point_mul(&du.limbs);
+        let mut x = [0; LIMB_LENGTH * LIMB_BYTES];
+        let mut y = [0; LIMB_LENGTH * LIMB_BYTES];
+
+        big_endian_affine_from_jacobian(&mut x, &mut y, &pk_point)?;
+
+        Ok(PublicKey::new(&x, &y))
+    }
 }
 
-pub const PUBLIC_KE_LEN: usize = 1 + (2 * LIMB_LENGTH * LIMB_BYTES);
+pub const PUBLIC_KEY_LEN: usize = 1 + (2 * LIMB_LENGTH * LIMB_BYTES);

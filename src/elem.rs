@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::key::public::PublicKey;
-use crate::limb::{Limb, LIMB_FALSE, LIMB_LENGTH, LIMB_TRUE, ONE};
+use crate::limb::{Limb, LIMB_LENGTH, ONE};
 use crate::norop::{norop_limbs_equal_with, norop_limbs_less_than};
 use crate::sm2p256::{
     add_mod, base_point_mul, inv_sqr, mont_pro, point_add, point_mul, scalar_add_mod, scalar_inv,
@@ -115,11 +115,11 @@ impl<M> Elem<M> {
     }
 
     pub fn is_zero(&self) -> bool {
-        norop_limbs_equal_with(&self.limbs, &[0; LIMB_LENGTH]) == LIMB_TRUE
+        norop_limbs_equal_with(&self.limbs, &[0; LIMB_LENGTH])
     }
 
     pub fn is_equal(&self, other: &Elem<M>) -> bool {
-        norop_limbs_equal_with(&self.limbs, &other.limbs) == LIMB_TRUE
+        norop_limbs_equal_with(&self.limbs, &other.limbs)
     }
 }
 
@@ -144,10 +144,7 @@ pub fn elem_add(a: &Elem<R>, b: &Elem<R>) -> Elem<R> {
 }
 
 pub fn elem_inv_sqr_to_mont(a: &Elem<R>) -> Elem<R> {
-    assert_eq!(
-        norop_limbs_equal_with(&a.limbs, &[0; LIMB_LENGTH]),
-        LIMB_FALSE
-    );
+    assert!(!norop_limbs_equal_with(&a.limbs, &[0; LIMB_LENGTH]));
 
     Elem {
         limbs: inv_sqr(&a.limbs),
@@ -163,7 +160,7 @@ pub fn elem_to_unencoded(a: &Elem<R>) -> Elem<Unencoded> {
 }
 
 pub fn elem_reduced_to_scalar(e: &Elem<Unencoded>) -> Scalar {
-    if norop_limbs_less_than(&e.limbs, &CURVE_PARAMS.n) == LIMB_TRUE {
+    if norop_limbs_less_than(&e.limbs, &CURVE_PARAMS.n) {
         Scalar {
             limbs: e.limbs,
             m: PhantomData,
@@ -206,10 +203,7 @@ pub fn point_z(p: &[Limb; LIMB_LENGTH * 3]) -> Elem<R> {
 pub type Scalar<N = Unencoded> = Elem<N>;
 
 pub fn scalar_inv_to_mont(a: &Scalar) -> Scalar<R> {
-    assert_eq!(
-        norop_limbs_equal_with(&a.limbs, &[0; LIMB_LENGTH]),
-        LIMB_FALSE
-    );
+    assert!(!norop_limbs_equal_with(&a.limbs, &[0; LIMB_LENGTH]));
 
     Scalar {
         limbs: scalar_inv(&a.limbs),
