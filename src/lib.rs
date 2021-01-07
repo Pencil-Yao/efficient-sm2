@@ -40,5 +40,6 @@ mod rand;
 mod sm2p256;
 mod sm2p256_table;
 
+pub use crate::rand::SecureRandom;
 pub use ec::KeyPair;
 pub use ec::Signature;

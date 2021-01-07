@@ -642,7 +642,8 @@ pub(crate) fn scalar_inv(a: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::jacobian::exchange::affine_from_jacobian;
+    use crate::jacobian::exchange::big_endian_affine_from_jacobian;
+    use crate::limb::{LIMB_BYTES, ONE};
 
     #[test]
     fn sqr_mul_test() {
@@ -665,13 +666,14 @@ mod tests {
 
     #[test]
     fn mont_pro_test() {
-        let a: &[Limb; LIMB_LENGTH] = &[
+        let a = &to_mont(&[
             0xfffff8950000053b,
             0xfffffdc600000543,
             0xfffffb8c00000324,
             0xfffffc4d0000064e,
-        ];
+        ]);
         let mut r = mont_pro(a, a);
+        r = mont_pro(&r, &ONE);
         r.reverse();
         println!("mont_pro_test 1: {:x?}", r);
 
@@ -737,136 +739,132 @@ mod tests {
 
     #[test]
     fn point_double_test() {
-        let ori_point_g_x: &[Limb; LIMB_LENGTH] = &[
+        let g_x: &[Limb; LIMB_LENGTH] = &[
             0x715a4589334c74c7,
             0x8fe30bbff2660be1,
             0x5f9904466a39c994,
             0x32c4ae2c1f198119,
         ];
-        let ori_point_g_y: &[Limb; LIMB_LENGTH] = &[
+        let g_y: &[Limb; LIMB_LENGTH] = &[
             0x02df32e52139f0a0,
             0xd0a9877cc62a4740,
             0x59bdcee36b692153,
             0xbc3736a2f4f6779c,
         ];
-        let mont_ori_point_g_x = to_mont(ori_point_g_x);
-        let mont_ori_point_g_y = to_mont(ori_point_g_y);
-        let projective_mont_point_g = to_jacobi(&mont_ori_point_g_x, &mont_ori_point_g_y);
-        let double_projective_mont_point_g = point_double(&projective_mont_point_g);
+        let mont_g_x = to_mont(g_x);
+        let mont_g_y = to_mont(g_y);
+        let pro_mont_point_g = to_jacobi(&mont_g_x, &mont_g_y);
+        let double_projective_mont_point_g = point_double(&pro_mont_point_g);
 
-        let r_x: &mut [Limb; LIMB_LENGTH] = &mut [0, 0, 0, 0];
-        let r_y: &mut [Limb; LIMB_LENGTH] = &mut [0, 0, 0, 0];
-        r_x.copy_from_slice(&double_projective_mont_point_g[..LIMB_LENGTH]);
-        r_y.copy_from_slice(&double_projective_mont_point_g[LIMB_LENGTH..LIMB_LENGTH * 2]);
-        r_x.reverse();
-        r_y.reverse();
-        println!("point_double_test: x: {:x?}, y: {:x?}", r_x, r_y);
+        let mut x_out = [0; LIMB_LENGTH * LIMB_BYTES];
+        let mut y_out = [0; LIMB_LENGTH * LIMB_BYTES];
+        big_endian_affine_from_jacobian(&mut x_out, &mut y_out, &double_projective_mont_point_g)
+            .unwrap();
+        println!(
+            "point_double_test: x: {}, y: {}",
+            hex::encode(x_out),
+            hex::encode(y_out)
+        );
     }
 
     #[test]
     fn point_add_test() {
-        let g_2_x: &[Limb; LIMB_LENGTH] = &[
-            0x0af037bfbc3be46a,
-            0x83bdc9ba2d8fa938,
-            0x5349d94b5788cd24,
-            0x0d7e9c18caa5736a,
-        ];
-        let g_2_y: &[Limb; LIMB_LENGTH] = &[
-            0x6a7e1a1d69db9ac1,
-            0xccbd8d37c4a8e82b,
-            0xc7b145169b7157ac,
-            0x947e74656c21bdf5,
-        ];
-        let g_4_x: &[Limb; LIMB_LENGTH] = &[
-            0x393f7c5a98615060,
-            0x487ea27fe9016209,
-            0x8a86bcb4a09f9020,
-            0x50dc8e3ac899dbe1,
-        ];
-        let g_4_y: &[Limb; LIMB_LENGTH] = &[
-            0xfc099043fd619998,
-            0x1de135ea7c7383bd,
-            0x4d0bd55632cf70ed,
-            0x6ffc31c525bce9e3,
-        ];
-        let pro_g_2 = to_jacobi(&g_2_x, &g_2_y);
-        let pro_g_4 = to_jacobi(&g_4_x, &g_4_y);
-        let pro_g_6 = point_add(&pro_g_2, &pro_g_4);
-
-        let r_x: &mut [Limb; LIMB_LENGTH] = &mut [0, 0, 0, 0];
-        let r_y: &mut [Limb; LIMB_LENGTH] = &mut [0, 0, 0, 0];
-        r_x.copy_from_slice(&pro_g_6[..LIMB_LENGTH]);
-        r_y.copy_from_slice(&pro_g_6[LIMB_LENGTH..LIMB_LENGTH * 2]);
-        r_x.reverse();
-        r_y.reverse();
-        println!("point_add_test: x: {:x?}, y: {:x?}", r_x, r_y);
-    }
-
-    #[test]
-    fn point_mul_test() {
-        let ori_point_g_x: &[Limb; LIMB_LENGTH] = &[
+        let g_x: &[Limb; LIMB_LENGTH] = &[
             0x715a4589334c74c7,
             0x8fe30bbff2660be1,
             0x5f9904466a39c994,
             0x32c4ae2c1f198119,
         ];
-        let ori_point_g_y: &[Limb; LIMB_LENGTH] = &[
+        let g_y: &[Limb; LIMB_LENGTH] = &[
             0x02df32e52139f0a0,
             0xd0a9877cc62a4740,
             0x59bdcee36b692153,
             0xbc3736a2f4f6779c,
         ];
-        let mont_ori_point_g_x = to_mont(&ori_point_g_x);
-        let mont_ori_point_g_y = to_mont(&ori_point_g_y);
-        let projective_mont_point_g = to_jacobi(&mont_ori_point_g_x, &mont_ori_point_g_y);
+        let mont_g_x = to_mont(g_x);
+        let mont_g_y = to_mont(g_y);
+        let pro_mont_point_g = to_jacobi(&mont_g_x, &mont_g_y);
+        let pro_mont_point_g2 = point_double(&pro_mont_point_g);
+
+        let pro_mont_point_g3 = point_add(&pro_mont_point_g, &pro_mont_point_g2);
+
+        let mut x_out = [0; LIMB_LENGTH * LIMB_BYTES];
+        let mut y_out = [0; LIMB_LENGTH * LIMB_BYTES];
+        big_endian_affine_from_jacobian(&mut x_out, &mut y_out, &pro_mont_point_g3).unwrap();
+        println!(
+            "point_add_test: x: {}, y: {}",
+            hex::encode(x_out),
+            hex::encode(y_out)
+        );
+    }
+
+    #[test]
+    fn point_mul_test() {
+        let g_x: &[Limb; LIMB_LENGTH] = &[
+            0x715a4589334c74c7,
+            0x8fe30bbff2660be1,
+            0x5f9904466a39c994,
+            0x32c4ae2c1f198119,
+        ];
+        let g_y: &[Limb; LIMB_LENGTH] = &[
+            0x02df32e52139f0a0,
+            0xd0a9877cc62a4740,
+            0x59bdcee36b692153,
+            0xbc3736a2f4f6779c,
+        ];
+        let mont_g_x = to_mont(&g_x);
+        let mont_g_y = to_mont(&g_y);
+        let pro_mont_point_g = to_jacobi(&mont_g_x, &mont_g_y);
         let scalar: &[Limb; LIMB_LENGTH] = &[
             0xd89cdf6229c4bddf,
             0xacf005cd78843090,
             0xe5a220abf7212ed6,
             0xdc30061d04874834,
         ];
-        let pro_point = point_mul(&projective_mont_point_g, scalar);
+        let pro_point = point_mul(&pro_mont_point_g, scalar);
 
-        let mut aff_point = affine_from_jacobian(&pro_point).unwrap();
-        aff_point.0.limbs.reverse();
-        aff_point.1.limbs.reverse();
+        let mut x_out = [0; LIMB_LENGTH * LIMB_BYTES];
+        let mut y_out = [0; LIMB_LENGTH * LIMB_BYTES];
+        big_endian_affine_from_jacobian(&mut x_out, &mut y_out, &pro_point).unwrap();
         println!(
-            "point_mul_test: x: {:x?}, y: {:x?}",
-            aff_point.0.limbs, aff_point.1.limbs
+            "point_mul_test: x: {}, y: {}",
+            hex::encode(x_out),
+            hex::encode(y_out)
         );
     }
 
     #[test]
     fn point_mul_bak_test() {
-        let ori_point_g_x: &[Limb; LIMB_LENGTH] = &[
+        let g_x: &[Limb; LIMB_LENGTH] = &[
             0x715a4589334c74c7,
             0x8fe30bbff2660be1,
             0x5f9904466a39c994,
             0x32c4ae2c1f198119,
         ];
-        let ori_point_g_y: &[Limb; LIMB_LENGTH] = &[
+        let g_y: &[Limb; LIMB_LENGTH] = &[
             0x02df32e52139f0a0,
             0xd0a9877cc62a4740,
             0x59bdcee36b692153,
             0xbc3736a2f4f6779c,
         ];
-        let mont_ori_point_g_x = to_mont(&ori_point_g_x);
-        let mont_ori_point_g_y = to_mont(&ori_point_g_y);
-        let projective_mont_point_g = to_jacobi(&mont_ori_point_g_x, &mont_ori_point_g_y);
+        let mont_g_x = to_mont(&g_x);
+        let mont_g_y = to_mont(&g_y);
+        let pro_mont_point_g = to_jacobi(&mont_g_x, &mont_g_y);
         let scalar: &[Limb; LIMB_LENGTH] = &[
             0xd89cdf6229c4bddf,
             0xacf005cd78843090,
             0xe5a220abf7212ed6,
             0xdc30061d04874834,
         ];
-        let pro_point = point_mul_bak(&projective_mont_point_g, scalar);
+        let pro_point = point_mul_bak(&pro_mont_point_g, scalar);
 
-        let mut aff_point = affine_from_jacobian(&pro_point).unwrap();
-        aff_point.0.limbs.reverse();
-        aff_point.1.limbs.reverse();
+        let mut x_out = [0; LIMB_LENGTH * LIMB_BYTES];
+        let mut y_out = [0; LIMB_LENGTH * LIMB_BYTES];
+        big_endian_affine_from_jacobian(&mut x_out, &mut y_out, &pro_point).unwrap();
         println!(
-            "point_mul_test: x: {:x?}, y: {:x?}",
-            aff_point.0.limbs, aff_point.1.limbs
+            "point_mul_bak_test: x: {}, y: {}",
+            hex::encode(x_out),
+            hex::encode(y_out)
         );
     }
 
@@ -880,12 +878,13 @@ mod tests {
         ];
         let pro_point = base_point_mul(scalar);
 
-        let mut aff_point = affine_from_jacobian(&pro_point).unwrap();
-        aff_point.0.limbs.reverse();
-        aff_point.1.limbs.reverse();
+        let mut x_out = [0; LIMB_LENGTH * LIMB_BYTES];
+        let mut y_out = [0; LIMB_LENGTH * LIMB_BYTES];
+        big_endian_affine_from_jacobian(&mut x_out, &mut y_out, &pro_point).unwrap();
         println!(
-            "base_point_mul_test: x: {:x?}, y: {:x?}",
-            aff_point.0.limbs, aff_point.1.limbs
+            "base_point_mul_test: x: {}, y: {}",
+            hex::encode(x_out),
+            hex::encode(y_out)
         );
     }
 

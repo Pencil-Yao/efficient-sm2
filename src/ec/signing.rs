@@ -68,8 +68,11 @@ impl KeyPair {
         digest: &[u8],
     ) -> Result<Signature, KeyRejected> {
         for _ in 0..100 {
+            #[allow(unused_variables)]
             let rk = create_private_key(rng)?;
 
+            // todo, the repo in wip state, keep this for testing basic
+            // algorithm correctness
             #[cfg(test)]
             let rk = Scalar {
                 limbs: [
@@ -113,8 +116,29 @@ impl KeyPair {
             let right = scalar_sub(&rk, &dr);
             let s = scalar_mul(&left, &right);
 
+            // todo, the repo in wip state, keep this for testing basic
+            // algorithm correctness
             #[cfg(test)]
-            println!("r: {:x?}, s: {:x?}", r.limbs, s.limbs);
+            {
+                assert_eq!(
+                    r.limbs,
+                    [
+                        0x343dcb2091bc1f2e,
+                        0x66c250abf482e4cb,
+                        0xb37a835a2b5a022f,
+                        0x76415405cbb177eb
+                    ]
+                );
+                assert_eq!(
+                    s.limbs,
+                    [
+                        0x39b532eb66b9cd90,
+                        0x67a1dee839e8179d,
+                        0x19073922992c6718,
+                        0x61f0665f805e78dd
+                    ]
+                );
+            }
 
             return Ok(Signature::from_scalars(r, s));
         }
