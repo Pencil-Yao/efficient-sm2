@@ -9,15 +9,67 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 *efficient-sm2*
 =====
 
+this repo is pure rust to achieve sm2 signing/verification algorithm, and it's performance better than other sm2
+library. What's more, you could change the struct `CURVE_PARAMS` to other Elliptic Curve's params and enjot greate
+performance. 
+
 ## usage
+
 ``` rust
-let test_word = b"hello world";
-let mut rng = EgRand(rand::thread_rng());
+use efficient_sm2::limb::{LIMB_BYTES, LIMB_LENGTH};
+use efficient_sm2::SecureRandom;
+use rand::Rng;
 
-let mut private_key = [0; LIMB_LENGTH * LIMB_BYTES];
-rng.fill(&mut private_key);
+fn main() {
+    pub struct EgRand(rand::prelude::ThreadRng);
 
-let key_pair = KeyPair::new(&private_key).unwrap();
+    impl SecureRandom for EgRand {
+        fn fill(&mut self, dest: &mut [u8]) {
+            self.0.fill(dest)
+        }
+    }
 
-let sig = key_pair.sign(&mut rng, test_word).unwrap();
+    let test_word = b"hello world";
+    let mut rng = EgRand(rand::thread_rng());
+
+    let mut private_key = [0; LIMB_LENGTH * LIMB_BYTES];
+    rng.fill(&mut private_key);
+
+    let key_pair = efficient_sm2::KeyPair::new(&private_key).unwrap();
+
+    // signing in sm2
+    let sig = key_pair.sign(&mut rng, test_word).unwrap();
+
+    // verification sm2 signature
+    sig.verify(&key_pair.public_key(), test_word).unwrap()
+}
 ```
+## bench
+
+``` shell
+ cargo +nightly bench --workspace --features internal_benches
+```
+
+### result
+
+```
+test ec::signing::sign_bench::es_sign_bench      ... bench:      59,064 ns/iter (+/- 1,151)
+test ec::signing::sign_bench::es_verify_bench    ... bench:     156,189 ns/iter (+/- 22,855)
+test ec::signing::sign_bench::libsm_sign_bench   ... bench:     208,987 ns/iter (+/- 7,795)
+test ec::signing::sign_bench::libsm_verify_bench ... bench:     831,658 ns/iter (+/- 282,336)
+test sm2p256::sm2_bench::add_mod_bench           ... bench:           9 ns/iter (+/- 0)
+test sm2p256::sm2_bench::base_point_mul_bench    ... bench:      10,333 ns/iter (+/- 5,102)
+test sm2p256::sm2_bench::big_number_bench        ... bench:         733 ns/iter (+/- 122)
+test sm2p256::sm2_bench::libsm_mul_mod_bench     ... bench:          93 ns/iter (+/- 5)
+test sm2p256::sm2_bench::mont_pro_bench          ... bench:          31 ns/iter (+/- 0)
+test sm2p256::sm2_bench::point_add_bench         ... bench:         345 ns/iter (+/- 128)
+test sm2p256::sm2_bench::point_double_bench      ... bench:         431 ns/iter (+/- 154)
+test sm2p256::sm2_bench::point_mul_bench         ... bench:     110,865 ns/iter (+/- 565)
+test sm2p256::sm2_bench::shl_bak_bench           ... bench:          52 ns/iter (+/- 0)
+test sm2p256::sm2_bench::shl_bench               ... bench:          17 ns/iter (+/- 1)
+test sm2p256::sm2_bench::sub_mod_bench           ... bench:          10 ns/iter (+/- 0)
+```
+ps. bench environment: 
+* `cpu`: `amd r7 4800-h`
+* `memory`: `32g`
+* `os`: `ubuntu 20.04`

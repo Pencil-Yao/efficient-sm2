@@ -34,7 +34,7 @@ mod elem;
 mod err;
 mod jacobian;
 mod key;
-mod limb;
+pub mod limb;
 mod norop;
 mod rand;
 mod sm2p256;
