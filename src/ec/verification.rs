@@ -22,6 +22,7 @@ use crate::key::public::PublicKey;
 use crate::limb::{Limb, LIMB_BYTES, LIMB_LENGTH};
 use crate::norop::{big_endian_from_limbs, parse_big_endian};
 use std::marker::PhantomData;
+use minitrace::*;
 
 pub struct Signature {
     r: Scalar,
@@ -67,6 +68,7 @@ impl Signature {
     }
 
     pub fn verify(&self, pk: &PublicKey, msg: &[u8]) -> Result<(), KeyRejected> {
+        let _guard = Span::start("verify");
         let ctx = libsm::sm2::signature::SigCtx::new();
         let pk_point = ctx
             .load_pubkey(pk.bytes_less_safe())
@@ -77,6 +79,7 @@ impl Signature {
     }
 
     pub fn verify_digest(&self, pk: &PublicKey, digest: &[u8]) -> Result<(), KeyRejected> {
+        let _guard = Span::start("verify_digest");
         let mut dl = [0; LIMB_LENGTH];
         parse_big_endian(&mut dl, digest)?;
         let edl = Elem {

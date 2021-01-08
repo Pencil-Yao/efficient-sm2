@@ -20,6 +20,7 @@ use crate::norop::{
 };
 use crate::sm2p256_table::SM2P256_PRECOMPUTED;
 use std::marker::PhantomData;
+use minitrace::*;
 
 pub static CURVE_PARAMS: CurveParams = CurveParams {
     a: Elem {
@@ -328,6 +329,7 @@ pub(crate) fn point_mul(
     a: &[Limb; LIMB_LENGTH * 3],
     scalar: &[Limb; LIMB_LENGTH],
 ) -> [Limb; LIMB_LENGTH * 3] {
+    let _guard = Span::start("point_mul");
     let mut r = [0; LIMB_LENGTH * 3];
 
     let mut table = [[0; LIMB_LENGTH * 3]; 15];
@@ -394,6 +396,7 @@ pub(crate) fn point_mul_bak(
 
 #[inline]
 pub(crate) fn base_point_mul(scalar: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH * 3] {
+    let _guard = Span::start("base_point_mul");
     let mut r = [0; LIMB_LENGTH * 3];
     let num = LIMB_BITS / 8;
 
@@ -1125,6 +1128,32 @@ mod sm2_bench {
         ];
         bench.iter(|| {
             let _ = base_point_mul(&scalar);
+        });
+    }
+
+    #[bench]
+    fn inv_sqr_bench(bench: &mut test::Bencher) {
+        let scalar = [
+            0xfffff8950000053b,
+            0xfffffdc600000543,
+            0xfffffb8c00000324,
+            0xfffffc4d0000064e,
+        ];
+        bench.iter(|| {
+            let _ = inv_sqr(&scalar);
+        });
+    }
+
+    #[bench]
+    fn scalar_inv_bench(bench: &mut test::Bencher) {
+        let scalar = [
+            0xfffff8950000053b,
+            0xfffffdc600000543,
+            0xfffffb8c00000324,
+            0xfffffc4d0000064e,
+        ];
+        bench.iter(|| {
+            let _ = scalar_inv(&scalar);
         });
     }
 }

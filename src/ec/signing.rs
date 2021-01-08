@@ -26,6 +26,7 @@ use crate::norop::parse_big_endian;
 use crate::rand::SecureRandom;
 use crate::sm2p256::{base_point_mul, scalar_to_mont};
 use core::marker::PhantomData;
+use minitrace::*;
 
 pub struct KeyPair {
     d: Scalar<R>, // *R*
@@ -53,6 +54,7 @@ impl KeyPair {
         rng: &mut dyn SecureRandom,
         message: &[u8],
     ) -> Result<Signature, KeyRejected> {
+        let _guard = Span::start("sign");
         let ctx = libsm::sm2::signature::SigCtx::new();
         let pk_point = ctx
             .load_pubkey(self.pk.bytes_less_safe())
@@ -67,6 +69,7 @@ impl KeyPair {
         rng: &mut dyn SecureRandom,
         digest: &[u8],
     ) -> Result<Signature, KeyRejected> {
+        let _guard = Span::start("sign_digest");
         for _ in 0..100 {
             #[allow(unused_variables)]
             let rk = create_private_key(rng)?;
@@ -172,6 +175,55 @@ mod tests {
         let sig = key_pair.sign(&mut rng, test_word).unwrap();
 
         sig.verify(&key_pair.public_key(), test_word).unwrap()
+    }
+}
+
+#[cfg(test)]
+mod trace {
+    use super::*;
+    use minitrace::Scope;
+    use minitrace::{CollectArgs, Span};
+    use minitrace_jaeger::Reporter as JReporter;
+    use rand::prelude::ThreadRng;
+    use rand::Rng;
+
+    #[test]
+    fn sign_verify_trace() {
+        pub struct EgRand(ThreadRng);
+
+        impl SecureRandom for EgRand {
+            fn fill(&mut self, dest: &mut [u8]) {
+                self.0.fill(dest)
+            }
+        }
+
+        let test_word = b"hello world";
+        let mut rng = EgRand(rand::thread_rng());
+
+        let private_key = b"f68de5710d66195e2bacd994b1408d4e";
+
+        let key_pair = KeyPair::new(&private_key).unwrap();
+
+        let spans = {
+            let (scope, collector) = Scope::root("root");
+
+            let _scope_guard = scope.attach_and_observe();
+            let _span_guard =
+                Span::start("a span").with_property(|| ("a property", "a value".to_owned()));
+
+            for _ in 0..20 {
+                let sig = key_pair.sign(&mut rng, test_word).unwrap();
+                sig.verify(&key_pair.public_key(), test_word).unwrap();
+            }
+
+            collector
+        }
+        .collect_with_args(CollectArgs::default().sync(true));
+
+        // Report to Jaeger
+        let bytes =
+            JReporter::encode("sm2_sign_verify".to_owned(), rand::random(), 0, 0, &spans).unwrap();
+        let _ = JReporter::report("127.0.0.1:6831".parse().unwrap(), &bytes).ok();
     }
 }
 

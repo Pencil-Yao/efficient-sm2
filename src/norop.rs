@@ -15,6 +15,8 @@
 use crate::err::KeyRejected;
 use crate::limb::{DoubleLimb, Limb, LIMB_BITS, LIMB_BYTES, LIMB_FULL};
 use std::cmp::Ordering;
+use minitrace::*;
+use minitrace_macro::trace;
 
 struct DoubleLimbPair(DoubleLimb, DoubleLimb);
 
@@ -244,6 +246,7 @@ pub(crate) fn parse_big_endian(output: &mut [Limb], input: &[u8]) -> Result<(), 
     Ok(())
 }
 
+#[trace("big_endian_from_limbs")]
 pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
     let num_limbs = limbs.len();
     assert_eq!(out.len(), num_limbs * LIMB_BYTES);

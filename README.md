@@ -53,10 +53,10 @@ fn main() {
 ### result
 
 ```
-test ec::signing::sign_bench::es_sign_bench      ... bench:      59,064 ns/iter (+/- 1,151)
-test ec::signing::sign_bench::es_verify_bench    ... bench:     156,189 ns/iter (+/- 22,855)
-test ec::signing::sign_bench::libsm_sign_bench   ... bench:     208,987 ns/iter (+/- 7,795)
-test ec::signing::sign_bench::libsm_verify_bench ... bench:     831,658 ns/iter (+/- 282,336)
+* efficient-sm2 sign: test ec::signing::sign_bench::es_sign_bench      ... bench:      59,064 ns/iter (+/- 1,151)
+* efficient-sm2 verify: test ec::signing::sign_bench::es_verify_bench    ... bench:     156,189 ns/iter (+/- 22,855)
+* libsm sign: test ec::signing::sign_bench::libsm_sign_bench   ... bench:     208,987 ns/iter (+/- 7,795)
+* libsm verify: test ec::signing::sign_bench::libsm_verify_bench ... bench:     831,658 ns/iter (+/- 282,336)
 test sm2p256::sm2_bench::add_mod_bench           ... bench:           9 ns/iter (+/- 0)
 test sm2p256::sm2_bench::base_point_mul_bench    ... bench:      10,333 ns/iter (+/- 5,102)
 test sm2p256::sm2_bench::big_number_bench        ... bench:         733 ns/iter (+/- 122)

@@ -20,6 +20,7 @@ use crate::sm2p256::{
     scalar_mont_pro, scalar_sub_mod, CURVE_PARAMS,
 };
 use core::marker::PhantomData;
+use minitrace::*;
 
 // Indicates that the element is not encoded; there is no *R* factor
 // that needs to be canceled out.
@@ -203,6 +204,7 @@ pub fn point_z(p: &[Limb; LIMB_LENGTH * 3]) -> Elem<R> {
 pub type Scalar<N = Unencoded> = Elem<N>;
 
 pub fn scalar_inv_to_mont(a: &Scalar) -> Scalar<R> {
+    let _guard = Span::start("scalar_inv_to_mont");
     assert!(!norop_limbs_equal_with(&a.limbs, &[0; LIMB_LENGTH]));
 
     Scalar {

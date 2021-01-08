@@ -19,6 +19,9 @@ libsm = "0.3.0"
 hex = "0.3"
 num-bigint = "0.2"
 num-traits = "0.2.11"
+minitrace = { git = "https://github.com/tikv/minitrace-rust.git" }
+minitrace-jaeger = { git = "https://github.com/tikv/minitrace-rust.git" }
+minitrace-macro = { git = "https://github.com/tikv/minitrace-rust.git" }
 
 [features]
 internal_benches = []

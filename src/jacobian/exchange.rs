@@ -19,6 +19,7 @@ use crate::err::KeyRejected;
 use crate::limb::{Limb, LIMB_BYTES, LIMB_LENGTH};
 use crate::norop::big_endian_from_limbs;
 use crate::sm2p256::CURVE_PARAMS;
+use minitrace::*;
 
 pub fn big_endian_affine_from_jacobian(
     x_out: &mut [u8; LIMB_LENGTH * LIMB_BYTES],
@@ -37,6 +38,7 @@ pub fn big_endian_affine_from_jacobian(
 pub fn affine_from_jacobian(
     point: &[Limb; LIMB_LENGTH * 3],
 ) -> Result<(Elem<R>, Elem<R>), KeyRejected> {
+    let _guard = Span::start("affine_from_jacobian");
     let x = point_x(point);
     let y = point_y(point);
     let z = point_z(point);
@@ -59,6 +61,7 @@ pub fn affine_from_jacobian(
 pub fn verify_jacobian_point_is_on_the_curve(
     point: &[Limb; LIMB_LENGTH * 3],
 ) -> Result<(), KeyRejected> {
+    let _guard = Span::start("verify_jacobian_point_is_on_the_curve");
     let z = point_z(&point);
 
     if z.is_zero() {
