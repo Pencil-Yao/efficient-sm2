@@ -39,6 +39,7 @@ mod norop;
 mod rand;
 mod sm2p256;
 mod sm2p256_table;
+mod sm2p256_test;
 
 pub use crate::rand::SecureRandom;
 pub use ec::KeyPair;
