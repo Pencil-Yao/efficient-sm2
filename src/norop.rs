@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::err::KeyRejected;
-use crate::limb::{DoubleLimb, Limb, LIMB_BITS, LIMB_BYTES, LIMB_FULL};
+use crate::limb::{DoubleLimb, Limb, LIMB_BITS, LIMB_BYTES, LIMB_FULL, LIMB_LENGTH};
 use std::cmp::Ordering;
 
 struct DoubleLimbPair(DoubleLimb, DoubleLimb);
@@ -118,6 +118,38 @@ pub(crate) fn norop_sub_pure(r: &mut [Limb], a: &[Limb], b: &[Limb]) -> bool {
         r[i] = tmp;
     }
     borrow
+}
+
+#[inline]
+pub(crate) fn norop_mul(
+    r: &mut [Limb; LIMB_LENGTH * 2],
+    a: &[Limb; LIMB_LENGTH],
+    b: &[Limb; LIMB_LENGTH]
+) {
+    let mut res_pair = DoubleLimbPair::new(0, 0);
+    for index in 0..(LIMB_LENGTH * 2 - 1) {
+        let min = if LIMB_LENGTH > index + 1 { 0 } else { index + 1 - LIMB_LENGTH };
+        let mut mid_pair = DoubleLimbPair::new(0, 0);
+        for i in min..=(LIMB_LENGTH - 1).min(index) {
+            mid_pair = mid_pair.pair_add(DoubleLimbPair::limb_mul(a[i], b[index - i]));
+        }
+        res_pair = DoubleLimbPair::new(res_pair.1, 0).pair_add(mid_pair);
+        r[index] = res_pair.0 as Limb;
+    }
+    r[LIMB_LENGTH * 2 - 1] = res_pair.1 as Limb;
+}
+
+/// r.len() >= 1 + b.len()
+#[inline]
+pub(crate) fn norop_lmls(r: &mut [Limb], a: Limb, b: &[Limb]) {
+    let lb = b.len();
+    assert!(r.len() >= lb + 1);
+    let mut res_pair = DoubleLimbPair::new(0, 0);
+    for index in 0..lb {
+        res_pair = DoubleLimbPair::new(res_pair.1, 0).pair_add(DoubleLimbPair::limb_mul(a, b[index]));
+        r[index] = res_pair.0 as Limb;
+    }
+    r[lb] = res_pair.1 as Limb;
 }
 
 #[inline]

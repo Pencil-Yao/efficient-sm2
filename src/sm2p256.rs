@@ -14,10 +14,7 @@
 
 use crate::elem::{Elem, R};
 use crate::limb::{Limb, LIMB_BITS, LIMB_LENGTH};
-use crate::norop::{
-    norop_add_pure, norop_limbs_equal_with, norop_limbs_less_than, norop_mul_pure,
-    norop_mul_pure_upper, norop_sub_pure,
-};
+use crate::norop::{norop_add_pure, norop_limbs_equal_with, norop_limbs_less_than, norop_mul_pure, norop_mul_pure_upper, norop_sub_pure, norop_mul};
 use crate::sm2p256_table::SM2P256_PRECOMPUTED;
 use std::marker::PhantomData;
 
@@ -100,10 +97,10 @@ pub struct CurveParams {
 pub(crate) fn mont_pro(a: &[Limb; LIMB_LENGTH], b: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
     let mut r = [0; LIMB_LENGTH];
     let mut t = [0; LIMB_LENGTH * 2];
-    norop_mul_pure(&mut t, a, b);
+    norop_mul(&mut t, a, b);
     norop_mul_pure_upper(&mut r, &t[0..LIMB_LENGTH], &CURVE_PARAMS.p_inv_r_neg, 4);
     let mut lam2 = [0; LIMB_LENGTH * 2];
-    norop_mul_pure(&mut lam2, &r, &CURVE_PARAMS.p);
+    norop_mul(&mut lam2, &r, &CURVE_PARAMS.p);
     let mut lam3 = [0; LIMB_LENGTH * 2];
     let carry = norop_add_pure(&mut lam3, &t, &lam2);
 
@@ -933,6 +930,7 @@ mod tests {
 mod sm2_bench {
     use super::*;
     use num_bigint::BigUint;
+    use crate::sm2p256_test::mont_pro_next;
 
     extern crate test;
 
@@ -946,6 +944,19 @@ mod sm2_bench {
         ];
         bench.iter(|| {
             a = mont_pro(&a, &a);
+        });
+    }
+
+    #[bench]
+    fn mont_pro_next_bench(bench: &mut test::Bencher) {
+        let mut a = [
+            0xffffff8a00000051,
+            0xffffffdc00000054,
+            0xffffffba00000031,
+            0xffffffc400000063,
+        ];
+        bench.iter(|| {
+            a = mont_pro_next(&a, &a);
         });
     }
 
