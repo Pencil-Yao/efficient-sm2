@@ -1,6 +1,6 @@
 [package]
 name = "efficient-sm2"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["yieazy <yuitta@163.com>"]
 description = "A Rust Library of China's Standards of Signature Algorithms (SM2)"
 documentation = "https://mock.icu/efficient-sm2"
