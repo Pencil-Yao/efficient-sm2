@@ -25,7 +25,7 @@ pub struct PublicKey {
 }
 
 impl PublicKey {
-    pub fn new(x: &[u8; LIMB_LENGTH * LIMB_BYTES], y: &[u8; LIMB_LENGTH * LIMB_BYTES]) -> Self {
+    pub fn new(x: &[u8], y: &[u8]) -> Self {
         let mut public = PublicKey {
             bytes: [0; PUBLIC_KEY_LEN],
         };
