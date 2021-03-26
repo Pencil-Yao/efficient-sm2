@@ -23,7 +23,7 @@ use crate::key::private::create_private_key;
 use crate::key::public::PublicKey;
 use crate::limb::{LIMB_LENGTH, ONE};
 use crate::norop::parse_big_endian;
-use crate::rand::{SecureRandom, DefaultRand};
+use crate::rand::{DefaultRand, SecureRandom};
 use crate::sm2p256::{base_point_mul, scalar_to_mont};
 use core::marker::PhantomData;
 
@@ -48,10 +48,7 @@ impl KeyPair {
         self.pk
     }
 
-    pub fn sign(
-        &self,
-        message: &[u8],
-    ) -> Result<Signature, KeyRejected> {
+    pub fn sign(&self, message: &[u8]) -> Result<Signature, KeyRejected> {
         let ctx = libsm::sm2::signature::SigCtx::new();
         let pk_point = ctx
             .load_pubkey(self.pk.bytes_less_safe())
@@ -165,7 +162,6 @@ mod tests {
 
     #[test]
     fn sign_verify_test() {
-
         let test_word = b"hello world";
 
         let private_key = b"f68de5710d66195e2bacd994b1408d4e";

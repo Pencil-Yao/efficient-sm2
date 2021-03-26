@@ -29,10 +29,7 @@ pub struct Signature {
 }
 
 impl Signature {
-    pub fn new(
-        r: &[u8],
-        s: &[u8],
-    ) -> Result<Self, KeyRejected> {
+    pub fn new(r: &[u8], s: &[u8]) -> Result<Self, KeyRejected> {
         let mut rl = [0; LIMB_LENGTH];
         parse_big_endian(&mut rl, r)?;
         let r = Scalar {
