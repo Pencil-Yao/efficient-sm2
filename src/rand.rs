@@ -12,8 +12,19 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use rand::rngs::ThreadRng;
+use rand::Rng;
+
 /// A secure random number generator.
 pub trait SecureRandom {
     /// Fills `dest` with random bytes.
     fn fill(&mut self, dest: &mut [u8]);
+}
+
+pub struct DefaultRand(pub ThreadRng);
+
+impl SecureRandom for DefaultRand {
+    fn fill(&mut self, dest: &mut [u8]) {
+        self.0.fill(dest)
+    }
 }

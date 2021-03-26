@@ -21,9 +21,9 @@ use crate::err::KeyRejected;
 use crate::jacobian::exchange::affine_from_jacobian;
 use crate::key::private::create_private_key;
 use crate::key::public::PublicKey;
-use crate::limb::{LIMB_BYTES, LIMB_LENGTH, ONE};
+use crate::limb::{LIMB_LENGTH, ONE};
 use crate::norop::parse_big_endian;
-use crate::rand::SecureRandom;
+use crate::rand::{SecureRandom, DefaultRand};
 use crate::sm2p256::{base_point_mul, scalar_to_mont};
 use core::marker::PhantomData;
 
@@ -33,7 +33,7 @@ pub struct KeyPair {
 }
 
 impl KeyPair {
-    pub fn new(private_key: &[u8; LIMB_LENGTH * LIMB_BYTES]) -> Result<Self, KeyRejected> {
+    pub fn new(private_key: &[u8]) -> Result<Self, KeyRejected> {
         let mut key_limb = [0; LIMB_LENGTH];
         parse_big_endian(&mut key_limb, private_key)?;
         let d = Scalar {
@@ -49,6 +49,19 @@ impl KeyPair {
     }
 
     pub fn sign(
+        &self,
+        message: &[u8],
+    ) -> Result<Signature, KeyRejected> {
+        let ctx = libsm::sm2::signature::SigCtx::new();
+        let pk_point = ctx
+            .load_pubkey(self.pk.bytes_less_safe())
+            .map_err(|_| KeyRejected::sign_error())?;
+        let digest = ctx.hash("1234567812345678", &pk_point, message);
+
+        self.sign_digest(&mut DefaultRand(rand::thread_rng()), &digest)
+    }
+
+    pub fn sign_with_seed(
         &self,
         rng: &mut dyn SecureRandom,
         message: &[u8],
@@ -149,27 +162,17 @@ impl KeyPair {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::prelude::ThreadRng;
-    use rand::Rng;
 
     #[test]
     fn sign_verify_test() {
-        pub struct EgRand(ThreadRng);
-
-        impl SecureRandom for EgRand {
-            fn fill(&mut self, dest: &mut [u8]) {
-                self.0.fill(dest)
-            }
-        }
 
         let test_word = b"hello world";
-        let mut rng = EgRand(rand::thread_rng());
 
         let private_key = b"f68de5710d66195e2bacd994b1408d4e";
 
-        let key_pair = KeyPair::new(&private_key).unwrap();
+        let key_pair = KeyPair::new(private_key).unwrap();
 
-        let sig = key_pair.sign(&mut rng, test_word).unwrap();
+        let sig = key_pair.sign(test_word).unwrap();
 
         sig.verify(&key_pair.public_key(), test_word).unwrap()
     }
@@ -201,7 +204,7 @@ mod sign_bench {
         let key_pair = KeyPair::new(private_key).unwrap();
 
         bench.iter(|| {
-            let _ = key_pair.sign(&mut rng, test_word).unwrap();
+            let _ = key_pair.sign_with_seed(&mut rng, test_word).unwrap();
         });
     }
 
@@ -231,7 +234,7 @@ mod sign_bench {
 
         let private_key = b"f68de5710d66195e2bacd994b1408d4e";
         let key_pair = KeyPair::new(private_key).unwrap();
-        let sig = key_pair.sign(&mut rng, test_word).unwrap();
+        let sig = key_pair.sign_with_seed(&mut rng, test_word).unwrap();
         let pk = key_pair.public_key();
 
         bench.iter(|| {
