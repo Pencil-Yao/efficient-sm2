@@ -16,32 +16,21 @@ performance.
 ## usage
 
 ``` rust
-use efficient_sm2::limb::{LIMB_BYTES, LIMB_LENGTH};
-use efficient_sm2::SecureRandom;
 use rand::Rng;
 
 fn main() {
-    pub struct EgRand(rand::prelude::ThreadRng);
-
-    impl SecureRandom for EgRand {
-        fn fill(&mut self, dest: &mut [u8]) {
-            self.0.fill(dest)
-        }
-    }
-
     let test_word = b"hello world";
-    let mut rng = EgRand(rand::thread_rng());
 
-    let mut private_key = [0; LIMB_LENGTH * LIMB_BYTES];
-    rng.fill(&mut private_key);
+    let mut private_key = [0; 32];
+    rand::thread_rng().fill_bytes(&mut private_key);
 
     let key_pair = efficient_sm2::KeyPair::new(&private_key).unwrap();
 
     // signing in sm2
-    let sig = key_pair.sign(&mut rng, test_word).unwrap();
+    let sig = key_pair.sign(test_word).unwrap();
 
     // verification sm2 signature
-    sig.verify(&key_pair.public_key(), test_word).unwrap()
+    sig.verify(&key_pair.public_key(), test_word).unwrap();
 }
 ```
 ## bench
