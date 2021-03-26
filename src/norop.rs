@@ -226,7 +226,7 @@ pub(crate) fn parse_big_endian(output: &mut [Limb], input: &[u8]) -> Result<(), 
         return Err(KeyRejected::unexpected_error());
     }
 
-    for r in &mut output[..] {
+    for r in output.iter_mut() {
         *r = 0;
     }
 

@@ -33,6 +33,7 @@ pub enum R {}
 
 // Indicates the element is encoded twice; the value has two *R*
 // factors that need to be canceled out.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone)]
 pub enum RR {}
 

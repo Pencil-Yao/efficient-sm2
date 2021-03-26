@@ -30,8 +30,8 @@ pub struct Signature {
 
 impl Signature {
     pub fn new(
-        r: &[u8; LIMB_LENGTH * LIMB_BYTES],
-        s: &[u8; LIMB_LENGTH * LIMB_BYTES],
+        r: &[u8],
+        s: &[u8],
     ) -> Result<Self, KeyRejected> {
         let mut rl = [0; LIMB_LENGTH];
         parse_big_endian(&mut rl, r)?;
