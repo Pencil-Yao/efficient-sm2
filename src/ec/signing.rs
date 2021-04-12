@@ -72,7 +72,7 @@ impl KeyPair {
         self.sign_digest(rng, &digest)
     }
 
-    fn sign_digest(
+    pub fn sign_digest(
         &self,
         rng: &mut dyn SecureRandom,
         digest: &[u8],
