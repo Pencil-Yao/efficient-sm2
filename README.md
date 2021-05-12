@@ -16,7 +16,7 @@ performance.
 ## usage
 
 ``` rust
-use rand::Rng;
+use rand::RngCore;
 
 fn main() {
     let test_word = b"hello world";
