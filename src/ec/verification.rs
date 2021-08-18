@@ -85,15 +85,15 @@ impl Signature {
         let (u1, u2) = (&self.s, scalar_add(&self.r, &self.s));
         let r = scalar_sub(&self.r, &e);
 
-        let point = twin_mul(&u1, &u2, &pk);
+        let point = twin_mul(u1, &u2, pk);
 
         verify_jacobian_point_is_on_the_curve(&point)?;
 
         fn sig_r_equals_x(r: &Elem<Unencoded>, point: &[Limb; LIMB_LENGTH * 3]) -> bool {
             let x = point_x(point);
-            let z = point_z(&point);
+            let z = point_z(point);
             let z2 = elem_mul(&z, &z);
-            let r_jacobian = elem_mul(&z2, &r);
+            let r_jacobian = elem_mul(&z2, r);
             let x = elem_to_unencoded(&x);
             r_jacobian.is_equal(&x)
         }

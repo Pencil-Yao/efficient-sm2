@@ -172,6 +172,28 @@ mod tests {
 
         sig.verify(&key_pair.public_key(), test_word).unwrap()
     }
+
+    #[test]
+    fn free_input_verify() {
+        let msg = b"abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd";
+
+        let pk = PublicKey::new(
+            &hex::decode("0259e738b6e8a699ad38011a85fc59f35a83ed6c287d944e8401c9b6e8793d0a")
+                .unwrap(),
+            &hex::decode("71c19ebd9a5750eb4ca1bb68f9b42057c5f25666385197f44544f97e2f4472c1")
+                .unwrap(),
+        );
+
+        let sig = Signature::new(
+            &hex::decode("b027c1d33771a1f693f07dec8d952b7c72afeff08fe3c05358610edbe8a1953e")
+                .unwrap(),
+            &hex::decode("99e911d3dc93381ba40c87e5c577ccbb855ea153ce25ef5022618c0af3c3bff3")
+                .unwrap(),
+        )
+        .unwrap();
+
+        assert!(sig.verify(&pk, msg).is_ok());
+    }
 }
 
 #[cfg(feature = "internal_benches")]

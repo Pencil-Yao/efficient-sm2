@@ -25,7 +25,7 @@ pub fn big_endian_affine_from_jacobian(
     y_out: &mut [u8; LIMB_LENGTH * LIMB_BYTES],
     point: &[Limb; LIMB_LENGTH * 3],
 ) -> Result<(), KeyRejected> {
-    let (x_aff, y_aff) = affine_from_jacobian(&point)?;
+    let (x_aff, y_aff) = affine_from_jacobian(point)?;
     let x = elem_to_unencoded(&x_aff);
     big_endian_from_limbs(&x.limbs, x_out);
     let y = elem_to_unencoded(&y_aff);
@@ -59,14 +59,14 @@ pub fn affine_from_jacobian(
 pub fn verify_jacobian_point_is_on_the_curve(
     point: &[Limb; LIMB_LENGTH * 3],
 ) -> Result<(), KeyRejected> {
-    let z = point_z(&point);
+    let z = point_z(point);
 
     if z.is_zero() {
         return Err(KeyRejected::zero_error());
     }
 
-    let x = point_x(&point);
-    let y = point_y(&point);
+    let x = point_x(point);
+    let y = point_y(point);
 
     let z2 = elem_mul(&z, &z);
     let z4 = elem_mul(&z2, &z2);

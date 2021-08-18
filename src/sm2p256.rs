@@ -421,7 +421,7 @@ pub(crate) fn inv_sqr(a: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
     //
     //    0xfffffffeffffffffffffffffffffffffffffffff00000000fffffffffffffffc
 
-    let b_1 = &a;
+    let b_1 = a;
     let b_11 = sqr_mul(b_1, b_1, 1);
     let b_111 = sqr_mul(&b_11, b_1, 1);
     let f_11 = sqr_mul(&b_111, &b_111, 3);
@@ -431,7 +431,7 @@ pub(crate) fn inv_sqr(a: &[Limb; LIMB_LENGTH]) -> [Limb; LIMB_LENGTH] {
     let ffffffff = sqr_mul(&fffffff_11, &b_11, 2);
 
     // fffffff_111
-    let mut acc = sqr_mul(&fffffff_11, &b_1, 1);
+    let mut acc = sqr_mul(&fffffff_11, b_1, 1);
 
     // fffffffe
     acc = mont_pro(&acc, &acc);
