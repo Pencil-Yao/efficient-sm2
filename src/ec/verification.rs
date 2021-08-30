@@ -23,6 +23,7 @@ use crate::limb::{Limb, LIMB_BYTES, LIMB_LENGTH};
 use crate::norop::{big_endian_from_limbs, parse_big_endian};
 use std::marker::PhantomData;
 
+#[derive(Clone)]
 pub struct Signature {
     r: Scalar,
     s: Scalar,

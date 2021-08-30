@@ -27,6 +27,7 @@ use crate::rand::{DefaultRand, SecureRandom};
 use crate::sm2p256::{base_point_mul, scalar_to_mont};
 use core::marker::PhantomData;
 
+#[derive(Clone)]
 pub struct KeyPair {
     d: Scalar<R>, // *R*
     pk: PublicKey,
