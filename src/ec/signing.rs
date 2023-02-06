@@ -17,7 +17,7 @@ use crate::elem::{
     elem_reduced_to_scalar, elem_to_unencoded, scalar_add, scalar_inv_to_mont, scalar_mul,
     scalar_sub, scalar_to_unencoded, Elem, Scalar, R,
 };
-use crate::err::KeyRejected;
+use crate::err::KeyRejectedError;
 use crate::jacobian::exchange::affine_from_jacobian;
 use crate::key::private::create_private_key;
 use crate::key::public::PublicKey;
@@ -34,7 +34,7 @@ pub struct KeyPair {
 }
 
 impl KeyPair {
-    pub fn new(private_key: &[u8]) -> Result<Self, KeyRejected> {
+    pub fn new(private_key: &[u8]) -> Result<Self, KeyRejectedError> {
         let mut key_limb = [0; LIMB_LENGTH];
         parse_big_endian(&mut key_limb, private_key)?;
         let d = Scalar {
@@ -49,12 +49,14 @@ impl KeyPair {
         self.pk
     }
 
-    pub fn sign(&self, message: &[u8]) -> Result<Signature, KeyRejected> {
+    pub fn sign(&self, message: &[u8]) -> Result<Signature, KeyRejectedError> {
         let ctx = libsm::sm2::signature::SigCtx::new();
         let pk_point = ctx
             .load_pubkey(self.pk.bytes_less_safe())
-            .map_err(|_| KeyRejected::sign_error())?;
-        let digest = ctx.hash("1234567812345678", &pk_point, message);
+            .map_err(|e| KeyRejectedError::LibSmError(format!("{e}")))?;
+        let digest = ctx
+            .hash("1234567812345678", &pk_point, message)
+            .map_err(|e| KeyRejectedError::LibSmError(format!("{e}")))?;
 
         self.sign_digest(&mut DefaultRand(rand::thread_rng()), &digest)
     }
@@ -63,12 +65,14 @@ impl KeyPair {
         &self,
         rng: &mut dyn SecureRandom,
         message: &[u8],
-    ) -> Result<Signature, KeyRejected> {
+    ) -> Result<Signature, KeyRejectedError> {
         let ctx = libsm::sm2::signature::SigCtx::new();
         let pk_point = ctx
             .load_pubkey(self.pk.bytes_less_safe())
-            .map_err(|_| KeyRejected::sign_error())?;
-        let digest = ctx.hash("1234567812345678", &pk_point, message);
+            .map_err(|e| KeyRejectedError::LibSmError(format!("{e}")))?;
+        let digest = ctx
+            .hash("1234567812345678", &pk_point, message)
+            .map_err(|e| KeyRejectedError::LibSmError(format!("{e}")))?;
 
         self.sign_digest(rng, &digest)
     }
@@ -77,7 +81,7 @@ impl KeyPair {
         &self,
         rng: &mut dyn SecureRandom,
         digest: &[u8],
-    ) -> Result<Signature, KeyRejected> {
+    ) -> Result<Signature, KeyRejectedError> {
         for _ in 0..100 {
             #[allow(unused_variables)]
             let rk = create_private_key(rng)?;
@@ -153,7 +157,7 @@ impl KeyPair {
 
             return Ok(Signature::from_scalars(r, s));
         }
-        Err(KeyRejected::sign_digest_error())
+        Err(KeyRejectedError::SignDigestFailed)
     }
 }
 
@@ -171,24 +175,31 @@ mod tests {
 
         let sig = key_pair.sign(test_word).unwrap();
 
+        println!(
+            "pk: {}, r: {}, s: {}",
+            hex::encode(key_pair.pk.bytes_less_safe()),
+            hex::encode(&sig.r()),
+            hex::encode(&sig.s())
+        );
+
         sig.verify(&key_pair.public_key(), test_word).unwrap()
     }
 
     #[test]
     fn free_input_verify() {
-        let msg = b"abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd";
+        let msg = b"hello world";
 
         let pk = PublicKey::new(
-            &hex::decode("0259e738b6e8a699ad38011a85fc59f35a83ed6c287d944e8401c9b6e8793d0a")
+            &hex::decode("B0E4E03D589C97375BBD6EA49483DD976FB88BBB0C07C72827CD8808B5794D5E")
                 .unwrap(),
-            &hex::decode("71c19ebd9a5750eb4ca1bb68f9b42057c5f25666385197f44544f97e2f4472c1")
+            &hex::decode("2881721E8D9BF56E81FC1E0C325F4FFC052E67FC3A31510D66E7B8749B93B636")
                 .unwrap(),
         );
 
         let sig = Signature::new(
-            &hex::decode("b027c1d33771a1f693f07dec8d952b7c72afeff08fe3c05358610edbe8a1953e")
+            &hex::decode("45FACCE4BDE9B8A34D43E6060210928802878DDD86A6EAE2938313A165F9F100")
                 .unwrap(),
-            &hex::decode("99e911d3dc93381ba40c87e5c577ccbb855ea153ce25ef5022618c0af3c3bff3")
+            &hex::decode("D9656DA4EC90FB2EFA399C0ECC6301882CA3301925281C58C2E29D9FD6F9C221")
                 .unwrap(),
         )
         .unwrap();
@@ -231,7 +242,7 @@ mod sign_bench {
     fn libsm_sign_bench(bench: &mut test::Bencher) {
         let test_word = b"hello world";
         let ctx = libsm::sm2::signature::SigCtx::new();
-        let (pk, sk) = ctx.new_keypair();
+        let (pk, sk) = ctx.new_keypair().unwrap();
 
         bench.iter(|| {
             let _ = ctx.sign(test_word, &sk, &pk);
@@ -265,8 +276,8 @@ mod sign_bench {
     fn libsm_verify_bench(bench: &mut test::Bencher) {
         let test_word = b"hello world";
         let ctx = libsm::sm2::signature::SigCtx::new();
-        let (pk, sk) = ctx.new_keypair();
-        let sig = ctx.sign(test_word, &sk, &pk);
+        let (pk, sk) = ctx.new_keypair().unwrap();
+        let sig = ctx.sign(test_word, &sk, &pk).unwrap();
 
         bench.iter(|| {
             let _ = ctx.verify(test_word, &pk, &sig);

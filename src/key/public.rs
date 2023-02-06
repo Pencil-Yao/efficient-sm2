@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::elem::{scalar_to_unencoded, Scalar, R};
-use crate::err::KeyRejected;
+use crate::err::KeyRejectedError;
 use crate::jacobian::exchange::big_endian_affine_from_jacobian;
 use crate::limb::{Limb, LIMB_BYTES, LIMB_LENGTH};
 use crate::norop::parse_big_endian;
@@ -52,7 +52,7 @@ impl PublicKey {
         to_jacobi(&x_aff, &y_aff)
     }
 
-    pub fn public_from_private(d: &Scalar<R>) -> Result<PublicKey, KeyRejected> {
+    pub fn public_from_private(d: &Scalar<R>) -> Result<PublicKey, KeyRejectedError> {
         let du = scalar_to_unencoded(d);
         let pk_point = base_point_mul(&du.limbs);
         let mut x = [0; LIMB_LENGTH * LIMB_BYTES];

@@ -15,7 +15,7 @@
 use crate::elem::{
     elem_add, elem_inv_sqr_to_mont, elem_mul, elem_to_unencoded, point_x, point_y, point_z, Elem, R,
 };
-use crate::err::KeyRejected;
+use crate::err::KeyRejectedError;
 use crate::limb::{Limb, LIMB_BYTES, LIMB_LENGTH};
 use crate::norop::big_endian_from_limbs;
 use crate::sm2p256::CURVE_PARAMS;
@@ -24,7 +24,7 @@ pub fn big_endian_affine_from_jacobian(
     x_out: &mut [u8; LIMB_LENGTH * LIMB_BYTES],
     y_out: &mut [u8; LIMB_LENGTH * LIMB_BYTES],
     point: &[Limb; LIMB_LENGTH * 3],
-) -> Result<(), KeyRejected> {
+) -> Result<(), KeyRejectedError> {
     let (x_aff, y_aff) = affine_from_jacobian(point)?;
     let x = elem_to_unencoded(&x_aff);
     big_endian_from_limbs(&x.limbs, x_out);
@@ -36,7 +36,7 @@ pub fn big_endian_affine_from_jacobian(
 
 pub fn affine_from_jacobian(
     point: &[Limb; LIMB_LENGTH * 3],
-) -> Result<(Elem<R>, Elem<R>), KeyRejected> {
+) -> Result<(Elem<R>, Elem<R>), KeyRejectedError> {
     let x = point_x(point);
     let y = point_y(point);
     let z = point_z(point);
@@ -58,11 +58,11 @@ pub fn affine_from_jacobian(
 
 pub fn verify_jacobian_point_is_on_the_curve(
     point: &[Limb; LIMB_LENGTH * 3],
-) -> Result<(), KeyRejected> {
+) -> Result<(), KeyRejectedError> {
     let z = point_z(point);
 
     if z.is_zero() {
-        return Err(KeyRejected::zero_error());
+        return Err(KeyRejectedError::ZeroError);
     }
 
     let x = point_x(point);
@@ -81,7 +81,7 @@ pub fn verify_affine_point_is_on_the_curve(
     (x, y): (&Elem<R>, &Elem<R>),
     a: &Elem<R>,
     b: &Elem<R>,
-) -> Result<(), KeyRejected> {
+) -> Result<(), KeyRejectedError> {
     let lhs = elem_mul(y, y);
 
     let x2 = elem_mul(x, x);
@@ -90,7 +90,7 @@ pub fn verify_affine_point_is_on_the_curve(
     let rhs = elem_add(&x2_a_x, b);
 
     if !lhs.is_equal(&rhs) {
-        return Err(KeyRejected::not_on_curve_error());
+        return Err(KeyRejectedError::NotOnCurveError);
     }
     Ok(())
 }

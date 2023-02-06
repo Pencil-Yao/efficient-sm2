@@ -16,7 +16,7 @@ use crate::elem::{
     elem_mul, elem_reduced_to_scalar, elem_to_unencoded, point_x, point_z, scalar_add, scalar_sub,
     scalar_to_elem, twin_mul, Elem, Scalar, Unencoded,
 };
-use crate::err::KeyRejected;
+use crate::err::KeyRejectedError;
 use crate::jacobian::exchange::verify_jacobian_point_is_on_the_curve;
 use crate::key::public::PublicKey;
 use crate::limb::{Limb, LIMB_BYTES, LIMB_LENGTH};
@@ -30,7 +30,7 @@ pub struct Signature {
 }
 
 impl Signature {
-    pub fn new(r: &[u8], s: &[u8]) -> Result<Self, KeyRejected> {
+    pub fn new(r: &[u8], s: &[u8]) -> Result<Self, KeyRejectedError> {
         let mut rl = [0; LIMB_LENGTH];
         parse_big_endian(&mut rl, r)?;
         let r = Scalar {
@@ -64,17 +64,19 @@ impl Signature {
         s_out
     }
 
-    pub fn verify(&self, pk: &PublicKey, msg: &[u8]) -> Result<(), KeyRejected> {
+    pub fn verify(&self, pk: &PublicKey, msg: &[u8]) -> Result<(), KeyRejectedError> {
         let ctx = libsm::sm2::signature::SigCtx::new();
         let pk_point = ctx
             .load_pubkey(pk.bytes_less_safe())
-            .map_err(|_| KeyRejected::verify_error())?;
-        let digest = ctx.hash("1234567812345678", &pk_point, msg);
+            .map_err(|e| KeyRejectedError::LibSmError(format!("{e}")))?;
+        let digest = ctx
+            .hash("1234567812345678", &pk_point, msg)
+            .map_err(|e| KeyRejectedError::LibSmError(format!("{e}")))?;
 
         self.verify_digest(pk, &digest)
     }
 
-    pub fn verify_digest(&self, pk: &PublicKey, digest: &[u8]) -> Result<(), KeyRejected> {
+    pub fn verify_digest(&self, pk: &PublicKey, digest: &[u8]) -> Result<(), KeyRejectedError> {
         let mut dl = [0; LIMB_LENGTH];
         parse_big_endian(&mut dl, digest)?;
         let edl = Elem {
@@ -103,6 +105,6 @@ impl Signature {
         if sig_r_equals_x(&r, &point) {
             return Ok(());
         }
-        Err(KeyRejected::verify_digest_error())
+        Err(KeyRejectedError::VerifyDigestFailed)
     }
 }

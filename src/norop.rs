@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::err::KeyRejected;
+use crate::err::KeyRejectedError;
 use crate::limb::{DoubleLimb, Limb, LIMB_BITS, LIMB_BYTES, LIMB_FULL};
 use std::cmp::Ordering;
 
@@ -213,7 +213,7 @@ pub(crate) fn norop_limbs_equal_with(a: &[Limb], b: &[Limb]) -> bool {
     true
 }
 
-pub(crate) fn parse_big_endian(output: &mut [Limb], input: &[u8]) -> Result<(), KeyRejected> {
+pub(crate) fn parse_big_endian(output: &mut [Limb], input: &[u8]) -> Result<(), KeyRejectedError> {
     let mut bytes_in_current_limb = input.len() % LIMB_BYTES;
     if bytes_in_current_limb == 0 {
         bytes_in_current_limb = LIMB_BYTES;
@@ -223,7 +223,7 @@ pub(crate) fn parse_big_endian(output: &mut [Limb], input: &[u8]) -> Result<(), 
         (input.len() / LIMB_BYTES) + (bytes_in_current_limb != LIMB_BYTES) as usize;
 
     if num_encoded_limbs > output.len() {
-        return Err(KeyRejected::unexpected_error());
+        return Err(KeyRejectedError::UnexpectedError);
     }
 
     for r in output.iter_mut() {
