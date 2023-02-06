@@ -16,7 +16,7 @@
 
 /// An error parsing or validating a key.
 ///
-/// The `Display` implementation and `<KeyRejected as Error>::description()`
+/// The `Display` implementation and `<KeyRejectedError as Error>::description()`
 /// will return a string that will help you better understand why a key was
 /// rejected change which errors are reported in which situations while
 /// minimizing the likelihood that any applications will be broken.
@@ -45,61 +45,13 @@
 ///
 ///  * Unexpected errors: Report this as a bug.
 
-#[derive(Copy, Clone, Debug)]
-pub struct KeyRejected(&'static str);
-
-impl KeyRejected {
-    /// The value returned from <Self as std::error::Error>::description()
-    pub fn description_(&self) -> &'static str {
-        self.0
-    }
-
-    pub(crate) fn unexpected_error() -> Self {
-        KeyRejected("UnexpectedError")
-    }
-
-    pub(crate) fn seed_error() -> Self {
-        KeyRejected("SeedOperationFailed")
-    }
-
-    pub(crate) fn sign_digest_error() -> Self {
-        KeyRejected("SignDigestFailed")
-    }
-
-    pub(crate) fn sign_error() -> Self {
-        KeyRejected("SignFailed")
-    }
-
-    pub(crate) fn verify_digest_error() -> Self {
-        KeyRejected("VerifyDigestFailed")
-    }
-
-    pub(crate) fn verify_error() -> Self {
-        KeyRejected("VerifyFailed")
-    }
-
-    pub(crate) fn zero_error() -> Self {
-        KeyRejected("ZeroError")
-    }
-
-    pub(crate) fn not_on_curve_error() -> Self {
-        KeyRejected("NotOnCurveError")
-    }
-}
-
-#[cfg(feature = "std")]
-impl std::error::Error for KeyRejected {
-    fn description(&self) -> &str {
-        self.description_()
-    }
-
-    fn cause(&self) -> Option<&dyn std::error::Error> {
-        None
-    }
-}
-
-impl core::fmt::Display for KeyRejected {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.write_str(self.description_())
-    }
+#[derive(PartialEq, Clone, Debug)]
+pub enum KeyRejectedError {
+    SeedOperationFailed,
+    SignDigestFailed,
+    VerifyDigestFailed,
+    ZeroError,
+    NotOnCurveError,
+    LibSmError(String),
+    UnexpectedError,
 }

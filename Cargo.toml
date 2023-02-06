@@ -4,7 +4,7 @@ version = "0.1.5"
 authors = ["yieazy <yuitta@163.com>"]
 description = "A Rust Library of China's Standards of Signature Algorithms (SM2)"
 documentation = "https://mock.icu/efficient-sm2"
-edition = "2018"
+edition = "2021"
 keywords = ["sm2", "cryptography", "performance"]
 license = "Apache-2.0"
 repository = "https://github.com/Pencil-Yao/efficient-sm2"
@@ -13,12 +13,12 @@ repository = "https://github.com/Pencil-Yao/efficient-sm2"
 
 [dependencies]
 rand = "0.8"
-libsm = "0.4"
+libsm = "0.5"
 
 [dev-dependencies]
-hex = "0.3"
-num-bigint = "0.2"
-num-traits = "0.2.11"
+hex = "0.4"
+num-bigint = "0.4"
+num-traits = "0.2"
 
 [features]
 internal_benches = []

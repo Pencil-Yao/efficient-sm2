@@ -978,7 +978,7 @@ mod sm2_bench {
             0x0000_0063,
         ]);
         bench.iter(|| {
-            a = ctx.mul(&a, &a);
+            a = ctx.mul(&a, &a).unwrap();
         });
     }
 

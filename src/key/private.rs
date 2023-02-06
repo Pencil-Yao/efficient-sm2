@@ -13,14 +13,14 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::elem::Scalar;
-use crate::err::KeyRejected;
+use crate::err::KeyRejectedError;
 use crate::limb::{LIMB_BYTES, LIMB_LENGTH};
 use crate::norop::{norop_limbs_less_than, parse_big_endian};
 use crate::rand::SecureRandom;
 use crate::sm2p256::CURVE_PARAMS;
 use core::marker::PhantomData;
 
-pub(crate) fn create_private_key(rng: &mut dyn SecureRandom) -> Result<Scalar, KeyRejected> {
+pub(crate) fn create_private_key(rng: &mut dyn SecureRandom) -> Result<Scalar, KeyRejectedError> {
     let mut seed = [0; LIMB_LENGTH * LIMB_BYTES];
     let mut candidate = [0; LIMB_LENGTH];
 
@@ -38,5 +38,5 @@ pub(crate) fn create_private_key(rng: &mut dyn SecureRandom) -> Result<Scalar, K
         }
     }
 
-    Err(KeyRejected::seed_error())
+    Err(KeyRejectedError::SeedOperationFailed)
 }
