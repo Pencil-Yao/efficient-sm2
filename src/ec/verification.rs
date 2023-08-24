@@ -48,6 +48,13 @@ impl Signature {
         Ok(Signature { r, s })
     }
 
+    pub fn from_slice(sig: &[u8]) -> Result<Self, KeyRejectedError> {
+        Self::new(
+            &sig[..LIMB_LENGTH * LIMB_BYTES],
+            &sig[LIMB_LENGTH * LIMB_BYTES..],
+        )
+    }
+
     pub fn from_scalars(r: Scalar, s: Scalar) -> Self {
         Signature { r, s }
     }

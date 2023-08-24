@@ -42,21 +42,23 @@ fn main() {
 ### result
 
 ```
-test ec::signing::sign_bench::es_sign_bench      ... bench:      59,064 ns/iter (+/- 1,151)
-test ec::signing::sign_bench::es_verify_bench    ... bench:     156,189 ns/iter (+/- 22,855)
-test ec::signing::sign_bench::libsm_sign_bench   ... bench:     208,987 ns/iter (+/- 7,795)
-test ec::signing::sign_bench::libsm_verify_bench ... bench:     831,658 ns/iter (+/- 282,336)
-test sm2p256::sm2_bench::add_mod_bench           ... bench:           9 ns/iter (+/- 0)
-test sm2p256::sm2_bench::base_point_mul_bench    ... bench:      10,333 ns/iter (+/- 5,102)
-test sm2p256::sm2_bench::big_number_bench        ... bench:         733 ns/iter (+/- 122)
-test sm2p256::sm2_bench::libsm_mul_mod_bench     ... bench:          93 ns/iter (+/- 5)
-test sm2p256::sm2_bench::mont_pro_bench          ... bench:          31 ns/iter (+/- 0)
-test sm2p256::sm2_bench::point_add_bench         ... bench:         345 ns/iter (+/- 128)
-test sm2p256::sm2_bench::point_double_bench      ... bench:         431 ns/iter (+/- 154)
-test sm2p256::sm2_bench::point_mul_bench         ... bench:     110,865 ns/iter (+/- 565)
-test sm2p256::sm2_bench::shl_bak_bench           ... bench:          52 ns/iter (+/- 0)
-test sm2p256::sm2_bench::shl_bench               ... bench:          17 ns/iter (+/- 1)
-test sm2p256::sm2_bench::sub_mod_bench           ... bench:          10 ns/iter (+/- 0)
+test ec::signing::sign_bench::es_sign_bench                ... bench:      54,400 ns/iter (+/- 329)
+test ec::signing::sign_bench::es_sign_without_sm3_bench    ... bench:      29,491 ns/iter (+/- 308)
+test ec::signing::sign_bench::es_verify_bench              ... bench:     122,369 ns/iter (+/- 1,324)
+test ec::signing::sign_bench::libsm_sign_bench             ... bench:     122,195 ns/iter (+/- 3,397)
+test ec::signing::sign_bench::libsm_sign_without_sm3_bench ... bench:     100,225 ns/iter (+/- 973)
+test ec::signing::sign_bench::libsm_verify_bench           ... bench:     535,756 ns/iter (+/- 21,421)
+test sm2p256::sm2_bench::add_mod_bench                     ... bench:           2 ns/iter (+/- 0)
+test sm2p256::sm2_bench::base_point_mul_bench              ... bench:       9,123 ns/iter (+/- 101)
+test sm2p256::sm2_bench::big_number_bench                  ... bench:         176 ns/iter (+/- 3)
+test sm2p256::sm2_bench::libsm_mul_mod_bench               ... bench:          90 ns/iter (+/- 1)
+test sm2p256::sm2_bench::mont_pro_bench                    ... bench:          29 ns/iter (+/- 0)
+test sm2p256::sm2_bench::point_add_bench                   ... bench:         283 ns/iter (+/- 5)
+test sm2p256::sm2_bench::point_double_bench                ... bench:         281 ns/iter (+/- 5)
+test sm2p256::sm2_bench::point_mul_bench                   ... bench:      94,572 ns/iter (+/- 1,745)
+test sm2p256::sm2_bench::shl_bak_bench                     ... bench:          45 ns/iter (+/- 1)
+test sm2p256::sm2_bench::shl_bench                         ... bench:           6 ns/iter (+/- 0)
+test sm2p256::sm2_bench::sub_mod_bench                     ... bench:           2 ns/iter (+/- 0)
 ```
 ps. bench environment: 
 * `cpu`: `amd r7 4800-h`

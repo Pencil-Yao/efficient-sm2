@@ -19,7 +19,7 @@ use crate::limb::{Limb, LIMB_BYTES, LIMB_LENGTH};
 use crate::norop::parse_big_endian;
 use crate::sm2p256::{base_point_mul, to_jacobi, to_mont};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct PublicKey {
     bytes: [u8; PUBLIC_KEY_LEN],
 }
@@ -34,6 +34,13 @@ impl PublicKey {
         public.bytes[1 + LIMB_LENGTH * LIMB_BYTES..].copy_from_slice(y);
 
         public
+    }
+
+    pub fn from_slice(slice: &[u8]) -> Self {
+        let mut bytes = [0; PUBLIC_KEY_LEN];
+        bytes[0] = 4;
+        bytes[1..].copy_from_slice(slice);
+        PublicKey { bytes }
     }
 
     pub fn bytes_less_safe(&self) -> &[u8] {

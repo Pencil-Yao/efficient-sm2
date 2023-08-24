@@ -205,6 +205,20 @@ mod tests {
         .unwrap();
 
         assert!(sig.verify(&pk, msg).is_ok());
+
+        let pk = PublicKey::from_slice(
+            &hex::decode("B0E4E03D589C97375BBD6EA49483DD976FB88BBB0C07C72827CD8808B5794D5E2881721E8D9BF56E81FC1E0C325F4FFC052E67FC3A31510D66E7B8749B93B636")
+                .unwrap(),
+        );
+
+        assert!(sig.verify(&pk, msg).is_ok());
+
+        let sig = Signature::from_slice(
+            &hex::decode("45FACCE4BDE9B8A34D43E6060210928802878DDD86A6EAE2938313A165F9F100D9656DA4EC90FB2EFA399C0ECC6301882CA3301925281C58C2E29D9FD6F9C221")
+                .unwrap(),
+        ).unwrap();
+
+        assert!(sig.verify(&pk, msg).is_ok());
     }
 }
 
@@ -246,6 +260,49 @@ mod sign_bench {
 
         bench.iter(|| {
             let _ = ctx.sign(test_word, &sk, &pk);
+        });
+    }
+
+    #[bench]
+    fn es_sign_without_sm3_bench(bench: &mut test::Bencher) {
+        pub struct EgRand(ThreadRng);
+
+        impl SecureRandom for EgRand {
+            fn fill(&mut self, dest: &mut [u8]) {
+                self.0.fill(dest)
+            }
+        }
+
+        let test_word = b"hello world";
+        let mut rng = EgRand(rand::thread_rng());
+
+        let private_key = b"f68de5710d66195e2bacd994b1408d4e";
+        let key_pair = KeyPair::new(private_key).unwrap();
+
+        let ctx = libsm::sm2::signature::SigCtx::new();
+        let pk_point = ctx
+            .load_pubkey(key_pair.pk.bytes_less_safe())
+            .map_err(|e| KeyRejectedError::LibSmError(format!("{e}")))
+            .unwrap();
+        let digest = ctx
+            .hash("1234567812345678", &pk_point, test_word)
+            .map_err(|e| KeyRejectedError::LibSmError(format!("{e}")))
+            .unwrap();
+
+        bench.iter(|| {
+            let _ = key_pair.sign_digest(&mut rng, &digest).unwrap();
+        });
+    }
+
+    #[bench]
+    fn libsm_sign_without_sm3_bench(bench: &mut test::Bencher) {
+        let test_word = b"hello world";
+        let ctx = libsm::sm2::signature::SigCtx::new();
+        let (pk, sk) = ctx.new_keypair().unwrap();
+        let digest = ctx.hash("1234567812345678", &pk, test_word).unwrap();
+
+        bench.iter(|| {
+            let _ = ctx.sign_raw(&digest, &sk);
         });
     }
 
