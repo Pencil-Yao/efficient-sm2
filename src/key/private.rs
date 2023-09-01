@@ -19,8 +19,9 @@ use crate::norop::{norop_limbs_less_than, parse_big_endian};
 use crate::rand::SecureRandom;
 use crate::sm2p256::CURVE_PARAMS;
 use core::marker::PhantomData;
+use rand::Rng;
 
-pub fn create_private_key(rng: &mut dyn SecureRandom) -> Result<Scalar, KeyRejectedError> {
+pub(crate) fn create_private_key(rng: &mut dyn SecureRandom) -> Result<Scalar, KeyRejectedError> {
     let mut seed = [0; LIMB_LENGTH * LIMB_BYTES];
     let mut candidate = [0; LIMB_LENGTH];
 
@@ -39,4 +40,21 @@ pub fn create_private_key(rng: &mut dyn SecureRandom) -> Result<Scalar, KeyRejec
     }
 
     Err(KeyRejectedError::SeedOperationFailed)
+}
+
+pub fn create_key_slice() -> [u8; LIMB_BYTES * LIMB_LENGTH] {
+    let mut out = [0; LIMB_LENGTH * LIMB_BYTES];
+    let mut candidate = [0; LIMB_LENGTH];
+
+    for _ in 0..100 {
+        let mut rng = rand::thread_rng();
+        rng.fill(&mut out);
+        parse_big_endian(&mut candidate, &out).unwrap();
+
+        if norop_limbs_less_than(&candidate, &CURVE_PARAMS.n) {
+            break;
+        }
+    }
+
+    out
 }

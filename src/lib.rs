@@ -44,5 +44,5 @@ pub use crate::rand::DefaultRand;
 pub use crate::rand::SecureRandom;
 pub use ec::KeyPair;
 pub use ec::Signature;
-pub use key::private::create_private_key;
+pub use key::private::create_key_slice;
 pub use key::public::PublicKey;
