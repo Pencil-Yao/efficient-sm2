@@ -20,7 +20,7 @@ use crate::rand::SecureRandom;
 use crate::sm2p256::CURVE_PARAMS;
 use core::marker::PhantomData;
 
-pub(crate) fn create_private_key(rng: &mut dyn SecureRandom) -> Result<Scalar, KeyRejectedError> {
+pub fn create_private_key(rng: &mut dyn SecureRandom) -> Result<Scalar, KeyRejectedError> {
     let mut seed = [0; LIMB_LENGTH * LIMB_BYTES];
     let mut candidate = [0; LIMB_LENGTH];
 
