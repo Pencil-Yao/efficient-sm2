@@ -91,10 +91,10 @@ impl KeyPair {
             #[cfg(test)]
             let rk = Scalar {
                 limbs: [
-                    0xd89cdf6229c4bddf,
-                    0xacf005cd78843090,
-                    0xe5a220abf7212ed6,
-                    0xdc30061d04874834,
+                    0xb9670787642a68de,
+                    0x3b4a6247824f5d33,
+                    0xa280f245f9e93c7f,
+                    0x94a1bbb14b906a61,
                 ],
                 m: PhantomData,
             };
@@ -138,19 +138,19 @@ impl KeyPair {
                 assert_eq!(
                     r.limbs,
                     [
-                        0x343dcb2091bc1f2e,
-                        0x66c250abf482e4cb,
-                        0xb37a835a2b5a022f,
-                        0x76415405cbb177eb
+                        0x36bbb9347abf074f,
+                        0x25b0f810baf864c4,
+                        0x1b87443325f3afd4,
+                        0xd6297b17c1cdf71a
                     ]
                 );
                 assert_eq!(
                     s.limbs,
                     [
-                        0x39b532eb66b9cd90,
-                        0x67a1dee839e8179d,
-                        0x19073922992c6718,
-                        0x61f0665f805e78dd
+                        0xb4075ea90353bfe1,
+                        0xe827e9a226326c4e,
+                        0xd768d0b8cf81bc40,
+                        0xde7692f608e19f41
                     ]
                 );
             }
@@ -167,13 +167,13 @@ mod tests {
 
     #[test]
     fn sign_verify_test() {
-        let test_word = b"hello world";
+        let test_word = hex::decode("5905238877c77421f73e43ee3da6f2d9e2ccad5fc942dcec0cbd25482935faaf416983fe165b1a045ee2bcd2e6dca3bdf46c4310a7461f9a37960ca672d3feb5473e253605fb1ddfd28065b53cb5858a8ad28175bf9bd386a5e471ea7a65c17cc934a9d791e91491eb3754d03799790fe2d308d16146d5c9b0d0debd97d79ce8").unwrap();
+        let private_key =
+            hex::decode("b8aa2a5bd9a9cf448984a247e63cb3878859d02b886e1bc63cd5c6dd46a744ab")
+                .unwrap();
+        let key_pair = KeyPair::new(&private_key).unwrap();
 
-        let private_key = b"f68de5710d66195e2bacd994b1408d4e";
-
-        let key_pair = KeyPair::new(private_key).unwrap();
-
-        let sig = key_pair.sign(test_word).unwrap();
+        let sig = key_pair.sign(&test_word).unwrap();
 
         println!(
             "pk: {}, r: {}, s: {}",
@@ -182,7 +182,7 @@ mod tests {
             hex::encode(&sig.s())
         );
 
-        sig.verify(&key_pair.public_key(), test_word).unwrap()
+        sig.verify(&key_pair.public_key(), &test_word).unwrap()
     }
 
     #[test]
@@ -240,15 +240,17 @@ mod sign_bench {
             }
         }
 
-        let test_word = b"hello world";
+        let test_word = hex::decode("5905238877c77421f73e43ee3da6f2d9e2ccad5fc942dcec0cbd25482935faaf416983fe165b1a045ee2bcd2e6dca3bdf46c4310a7461f9a37960ca672d3feb5473e253605fb1ddfd28065b53cb5858a8ad28175bf9bd386a5e471ea7a65c17cc934a9d791e91491eb3754d03799790fe2d308d16146d5c9b0d0debd97d79ce8").unwrap();
         let mut rng = EgRand(rand::thread_rng());
 
-        let private_key = b"f68de5710d66195e2bacd994b1408d4e";
+        let private_key =
+            hex::decode("b8aa2a5bd9a9cf448984a247e63cb3878859d02b886e1bc63cd5c6dd46a744ab")
+                .unwrap();
 
-        let key_pair = KeyPair::new(private_key).unwrap();
+        let key_pair = KeyPair::new(&private_key).unwrap();
 
         bench.iter(|| {
-            let _ = key_pair.sign_with_seed(&mut rng, test_word).unwrap();
+            let _ = key_pair.sign_with_seed(&mut rng, &test_word).unwrap();
         });
     }
 
@@ -273,11 +275,13 @@ mod sign_bench {
             }
         }
 
-        let test_word = b"hello world";
+        let test_word = hex::decode("5905238877c77421f73e43ee3da6f2d9e2ccad5fc942dcec0cbd25482935faaf416983fe165b1a045ee2bcd2e6dca3bdf46c4310a7461f9a37960ca672d3feb5473e253605fb1ddfd28065b53cb5858a8ad28175bf9bd386a5e471ea7a65c17cc934a9d791e91491eb3754d03799790fe2d308d16146d5c9b0d0debd97d79ce8").unwrap();
         let mut rng = EgRand(rand::thread_rng());
 
-        let private_key = b"f68de5710d66195e2bacd994b1408d4e";
-        let key_pair = KeyPair::new(private_key).unwrap();
+        let private_key =
+            hex::decode("b8aa2a5bd9a9cf448984a247e63cb3878859d02b886e1bc63cd5c6dd46a744ab")
+                .unwrap();
+        let key_pair = KeyPair::new(&private_key).unwrap();
 
         let ctx = libsm::sm2::signature::SigCtx::new();
         let pk_point = ctx
@@ -285,7 +289,7 @@ mod sign_bench {
             .map_err(|e| KeyRejectedError::LibSmError(format!("{e}")))
             .unwrap();
         let digest = ctx
-            .hash("1234567812345678", &pk_point, test_word)
+            .hash("1234567812345678", &pk_point, &test_word)
             .map_err(|e| KeyRejectedError::LibSmError(format!("{e}")))
             .unwrap();
 
@@ -316,16 +320,18 @@ mod sign_bench {
             }
         }
 
-        let test_word = b"hello world";
+        let test_word = hex::decode("5905238877c77421f73e43ee3da6f2d9e2ccad5fc942dcec0cbd25482935faaf416983fe165b1a045ee2bcd2e6dca3bdf46c4310a7461f9a37960ca672d3feb5473e253605fb1ddfd28065b53cb5858a8ad28175bf9bd386a5e471ea7a65c17cc934a9d791e91491eb3754d03799790fe2d308d16146d5c9b0d0debd97d79ce8").unwrap();
         let mut rng = EgRand(rand::thread_rng());
 
-        let private_key = b"f68de5710d66195e2bacd994b1408d4e";
-        let key_pair = KeyPair::new(private_key).unwrap();
-        let sig = key_pair.sign_with_seed(&mut rng, test_word).unwrap();
+        let private_key =
+            hex::decode("b8aa2a5bd9a9cf448984a247e63cb3878859d02b886e1bc63cd5c6dd46a744ab")
+                .unwrap();
+        let key_pair = KeyPair::new(&private_key).unwrap();
+        let sig = key_pair.sign_with_seed(&mut rng, &test_word).unwrap();
         let pk = key_pair.public_key();
 
         bench.iter(|| {
-            let _ = sig.verify(&pk, test_word).unwrap();
+            let _ = sig.verify(&pk, &test_word).unwrap();
         });
     }
 
