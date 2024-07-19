@@ -58,12 +58,6 @@ pub static CURVE_PARAMS: CurveParams = CurveParams {
         0xfffffffe00000000,
         0xfffffffc00000001,
     ],
-    r_p: [
-        0x0000000000000001,
-        0x00000000ffffffff,
-        0x0000000000000000,
-        0x100000000,
-    ],
     rr_p: [
         0x0000000200000003,
         0x00000002ffffffff,
@@ -90,7 +84,6 @@ pub struct CurveParams {
     pub p: [u64; 4],
     pub n: [u64; 4],
     pub p_inv_r_neg: [u64; 4],
-    pub r_p: [u64; 4],
     pub rr_p: [u64; 4],
     pub n_inv_r_neg: [u64; 4],
     pub rr_n: [u64; 4],

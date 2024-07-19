@@ -10,8 +10,8 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 =====
 
 this repo is pure rust to achieve sm2 signing/verification algorithm, and it's performance better than other sm2
-library. What's more, you could change the struct `CURVE_PARAMS` to other Elliptic Curve's params and enjot greate
-performance. 
+library. What's more, you could change the struct `CURVE_PARAMS` to other Elliptic Curve's params and enjoy greate
+performance.
 
 ## usage
 
@@ -33,6 +33,7 @@ fn main() {
     sig.verify(&key_pair.public_key(), test_word).unwrap();
 }
 ```
+
 ## bench
 
 ``` shell
@@ -42,25 +43,27 @@ fn main() {
 ### result
 
 ```
-test ec::signing::sign_bench::es_sign_bench                ... bench:      54,400 ns/iter (+/- 329)
-test ec::signing::sign_bench::es_sign_without_sm3_bench    ... bench:      29,491 ns/iter (+/- 308)
-test ec::signing::sign_bench::es_verify_bench              ... bench:     122,369 ns/iter (+/- 1,324)
-test ec::signing::sign_bench::libsm_sign_bench             ... bench:     122,195 ns/iter (+/- 3,397)
-test ec::signing::sign_bench::libsm_sign_without_sm3_bench ... bench:     100,225 ns/iter (+/- 973)
-test ec::signing::sign_bench::libsm_verify_bench           ... bench:     535,756 ns/iter (+/- 21,421)
-test sm2p256::sm2_bench::add_mod_bench                     ... bench:           2 ns/iter (+/- 0)
-test sm2p256::sm2_bench::base_point_mul_bench              ... bench:       9,123 ns/iter (+/- 101)
-test sm2p256::sm2_bench::big_number_bench                  ... bench:         176 ns/iter (+/- 3)
-test sm2p256::sm2_bench::libsm_mul_mod_bench               ... bench:          90 ns/iter (+/- 1)
+test ec::signing::sign_bench::es_sign_bench                ... bench:      52,532 ns/iter (+/- 730)
+test ec::signing::sign_bench::es_sign_without_sm3_bench    ... bench:      27,474 ns/iter (+/- 336)
+test ec::signing::sign_bench::es_verify_bench              ... bench:     117,975 ns/iter (+/- 992)
+test ec::signing::sign_bench::libsm_sign_bench             ... bench:     105,183 ns/iter (+/- 1,347)
+test ec::signing::sign_bench::libsm_sign_without_sm3_bench ... bench:      82,389 ns/iter (+/- 1,235)
+test ec::signing::sign_bench::libsm_verify_bench           ... bench:     562,687 ns/iter (+/- 43,833)
+test sm2p256::sm2_bench::add_mod_bench                     ... bench:           1 ns/iter (+/- 0)
+test sm2p256::sm2_bench::base_point_mul_bench              ... bench:       8,387 ns/iter (+/- 70)
+test sm2p256::sm2_bench::big_number_bench                  ... bench:         177 ns/iter (+/- 0)
+test sm2p256::sm2_bench::libsm_mul_mod_bench               ... bench:          99 ns/iter (+/- 7)
 test sm2p256::sm2_bench::mont_pro_bench                    ... bench:          29 ns/iter (+/- 0)
-test sm2p256::sm2_bench::point_add_bench                   ... bench:         283 ns/iter (+/- 5)
-test sm2p256::sm2_bench::point_double_bench                ... bench:         281 ns/iter (+/- 5)
-test sm2p256::sm2_bench::point_mul_bench                   ... bench:      94,572 ns/iter (+/- 1,745)
-test sm2p256::sm2_bench::shl_bak_bench                     ... bench:          45 ns/iter (+/- 1)
-test sm2p256::sm2_bench::shl_bench                         ... bench:           6 ns/iter (+/- 0)
+test sm2p256::sm2_bench::point_add_bench                   ... bench:         269 ns/iter (+/- 3)
+test sm2p256::sm2_bench::point_double_bench                ... bench:         267 ns/iter (+/- 4)
+test sm2p256::sm2_bench::point_mul_bench                   ... bench:      90,584 ns/iter (+/- 2,239)
+test sm2p256::sm2_bench::shl_bak_bench                     ... bench:          43 ns/iter (+/- 0)
+test sm2p256::sm2_bench::shl_bench                         ... bench:           5 ns/iter (+/- 0)
 test sm2p256::sm2_bench::sub_mod_bench                     ... bench:           2 ns/iter (+/- 0)
 ```
-ps. bench environment: 
+
+ps. bench environment:
+
 * `cpu`: `amd r7 4800-h`
 * `memory`: `32g`
 * `os`: `ubuntu 20.04`

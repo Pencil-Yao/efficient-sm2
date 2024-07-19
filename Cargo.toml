@@ -13,7 +13,7 @@ repository = "https://github.com/Pencil-Yao/efficient-sm2"
 
 [dependencies]
 rand = "0.8"
-libsm = "0.5"
+libsm = "0.6"
 
 [dev-dependencies]
 hex = "0.4"
