@@ -58,7 +58,7 @@ impl KeyPair {
             .hash("1234567812345678", &pk_point, message)
             .map_err(|e| KeyRejectedError::LibSmError(format!("{e}")))?;
 
-        self.sign_digest(&mut DefaultRand(rand::thread_rng()), &digest)
+        self.sign_digest(&mut DefaultRand(rand::rng()), &digest)
     }
 
     pub fn sign_with_seed(

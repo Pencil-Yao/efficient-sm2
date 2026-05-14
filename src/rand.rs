@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use rand::rngs::ThreadRng;
-use rand::Rng;
+use rand::RngExt;
 
 /// A secure random number generator.
 pub trait SecureRandom {
